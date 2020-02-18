@@ -1060,7 +1060,7 @@ static int aw8624_haptic_rtp_init(struct aw8624 *aw8624)
 		if (aw8624->rtp_cnt == aw8624_rtp->len) {
 			pr_info("%s: rtp update complete\n", __func__);
 			aw8624->rtp_cnt = 0;
-			return 0;
+			break;
 		}
 	}
 
@@ -1400,6 +1400,7 @@ static void aw8624_rtp_work_routine(struct work_struct *work)
 	aw8624_haptic_stop(aw8624);
 
 	if (aw8624->state) {
+		pm_stay_awake(aw8624->dev);
 		aw8624_haptic_effect_strength(aw8624);
 		aw8624->rtp_file_num = aw8624->effect_id - 20;
 		VIB_DEBUG("aw8624->rtp_file_num =%d", aw8624->rtp_file_num);
@@ -1417,6 +1418,7 @@ static void aw8624_rtp_work_routine(struct work_struct *work)
 		if (ret < 0) {
 			pr_err("%s: failed to read %s\n", __func__,
 			       aw8624_rtp_name[aw8624->rtp_file_num]);
+			pm_relax(aw8624->dev);
 			mutex_unlock(&aw8624->lock);
 			return;
 		}
@@ -1426,6 +1428,7 @@ static void aw8624_rtp_work_routine(struct work_struct *work)
 		if (!aw8624_rtp) {
 			release_firmware(rtp_file);
 			pr_err("%s: error allocating memory\n", __func__);
+			pm_relax(aw8624->dev);
 			mutex_unlock(&aw8624->lock);
 			return;
 		}
@@ -1452,6 +1455,7 @@ static void aw8624_rtp_work_routine(struct work_struct *work)
 	} else {
 		aw8624->rtp_cnt = 0;
 		aw8624->rtp_init = 0;
+		pm_relax(aw8624->dev);
 	}
 	mutex_unlock(&aw8624->lock);
 }
@@ -3981,6 +3985,7 @@ aw8624_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	aw8624->dev = &i2c->dev;
 	aw8624->i2c = i2c;
 
+	device_init_wakeup(aw8624->dev, true);
 	i2c_set_clientdata(i2c, aw8624);
 
 	/* aw8624 rst & int */
@@ -4106,6 +4111,18 @@ aw8624_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 		return rc;
 	}
 
+	aw8624->work_queue =
+	    create_singlethread_workqueue("aw8924_vibrator_work_queue");
+	if (!aw8624->work_queue) {
+		dev_err(&i2c->dev,
+			"%s: Error creating aw8924_vibrator_work_queue\n",
+			__func__);
+		goto err_sysfs;
+	}
+	aw8624_vibrator_init(aw8624);
+	aw8624_haptic_init(aw8624);
+	aw8624_ram_init(aw8624);
+
 	ff = input_dev->ff;
 	ff->upload = aw8624_haptics_upload_effect;
 	ff->playback = aw8624_haptics_playback;
@@ -4129,17 +4146,6 @@ aw8624_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	}
 
 	g_aw8624 = aw8624;
-	aw8624->work_queue =
-	    create_singlethread_workqueue("aw8924_vibrator_work_queue");
-	if (!aw8624->work_queue) {
-		dev_err(&i2c->dev,
-			"%s: Error creating aw8924_vibrator_work_queue\n",
-			__func__);
-		goto err_sysfs;
-	}
-	aw8624_vibrator_init(aw8624);
-	aw8624_haptic_init(aw8624);
-	aw8624_ram_init(aw8624);
 
 	pr_info("%s probe completed successfully!\n", __func__);
 
@@ -4158,6 +4164,7 @@ err_irq_gpio_request:
 		devm_gpio_free(&i2c->dev, aw8624->reset_gpio);
 err_reset_gpio_request:
 err_parse_dt:
+	device_init_wakeup(aw8624->dev, false);
 	devm_kfree(&i2c->dev, aw8624);
 	aw8624 = NULL;
 	return ret;
@@ -4181,6 +4188,7 @@ static int aw8624_i2c_remove(struct i2c_client *i2c)
 		flush_workqueue(aw8624->work_queue);
 		destroy_workqueue(aw8624->work_queue);
 	}
+	device_init_wakeup(aw8624->dev, false);
 	devm_kfree(&i2c->dev, aw8624);
 	aw8624 = NULL;
 
