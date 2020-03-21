@@ -334,7 +334,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
-		//led-flash-src = <&led_flash_rear>;
+		led-flash-src = <&led_flash_rear>;
 		//eeprom-src = <&eeprom_rear>;
 		//actuator-src = <&actuator_rear>;
 		cam_vio-supply = <&pm6150_l13>;//iovdd 1.8v
