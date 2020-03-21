@@ -95,6 +95,17 @@
 		gpio = <&pm6150l_gpios 4 0>;
 		vin-supply = <&pm6150l_bob>;//pm6150l_s8
 	};
+	wide_ldo_afvdd_regulator: gpio-regulator@2 { //AFVDD 2.8V
+		compatible = "regulator-fixed";
+		reg = <0x02 0x00>;
+		regulator-name = "wide_ldo_afvdd_regulator";
+		regulator-min-microvolt = <2900000>;
+		regulator-max-microvolt = <2900000>;
+		regulator-enable-ramp-delay = <100>;
+		enable-active-high;
+		gpio = <&tlmm 66 0>;
+		vin-supply = <&pm6150l_bob>;
+	};
 };
 
 &cam_cci0 {
@@ -108,7 +119,7 @@
 		reg = <0x0>;
 		compatible = "qcom,actuator";
 		cci-master = <0>;
-		cam_vaf-supply = <&pm8009_s2>;
+		cam_vaf-supply = <&wide_ldo_afvdd_regulator>;
 		regulator-names = "cam_vaf";
 		rgltr-cntrl-support;
 		rgltr-min-voltage = <2900000>;
@@ -336,7 +347,7 @@
 		sensor-position-yaw = <180>;
 		led-flash-src = <&led_flash_rear>;
 		//eeprom-src = <&eeprom_rear>;
-		//actuator-src = <&actuator_rear>;
+		actuator-src = <&actuator_rear>;
 		cam_vio-supply = <&pm6150_l13>;//iovdd 1.8v
 		cam_vana-supply = <&camera_vana>;//avdd 2.9v
 		cam_vdig-supply = <&wide_ldo_avdd2_regulator>;//dvdd 1.1v
