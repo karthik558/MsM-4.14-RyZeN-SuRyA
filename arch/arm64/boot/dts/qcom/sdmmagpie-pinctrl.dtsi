@@ -463,6 +463,44 @@
 			};
 		};
 
+		msm_gpio_90:msm_gpio_90 {
+			mux {
+				pins="gpio90";
+				function= "gpio";
+			};
+			config {
+				pins= "gpio90";
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+		};
+
+		msm_gpio_90_output_high:msm_gpio_90_output_high {
+			mux {
+				pins = "gpio90";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio90";
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
+		};
+
+		msm_gpio_89:msm_gpio_89{
+			mux {
+				pins = "gpio89";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio89";
+				drive-strength=<2>;
+				bias-pull-down;
+			};
+		};
+
 		/* SE 3 pin mappings */
 		qupv3_se3_i2c_pins: qupv3_se3_i2c_pins {
 			qupv3_se3_i2c_active: qupv3_se3_i2c_active {

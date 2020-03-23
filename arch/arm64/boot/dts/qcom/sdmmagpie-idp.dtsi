@@ -484,6 +484,26 @@
 			gpio-key,wakeup;
 		};
 	};
+
+	fpc1020 {
+		status = "ok";
+		compatible = "fpc,fpc1020";
+		interrupt-parent = <&tlmm>;
+		interrupts = <89 0x0>;
+		fpc,gpio_rst    = <&tlmm 90 0x0>;
+		fpc,gpio_irq    = <&tlmm 89 0x0>;
+		vcc_spi-supply  = <&pm6150l_l8>;
+		vdd_io-supply   = <&pm6150l_l8>;
+		vdd_ana-supply  = <&pm6150l_l8>;
+
+		pinctrl-names = "fpc1020_reset_reset",
+			"fpc1020_reset_active",
+			"fpc1020_irq_active";
+
+		pinctrl-0 = <&msm_gpio_90>;
+		pinctrl-1 = <&msm_gpio_90_output_high>;
+		pinctrl-2 = <&msm_gpio_89>;
+	};
 };
 
 &thermal_zones {
