@@ -42,8 +42,7 @@
 				 20 20 20 20 20 20 20 20 20 20
 				 20 20 20 20 20 20 20 20 20 20
 				 20 20 20 20 20 >;
-		pinctrl-names = "aw8624_reset_reset",
-			"aw8624_reset_active","aw8624_interrupt_active";
+		pinctrl-names = "aw8624_reset_reset","aw8624_reset_active","aw8624_interrupt_active";
 		pinctrl-0 = <&msm_gpio_63>;
 		pinctrl-1 = <&msm_gpio_63_output_high>;
 		pinctrl-2 = <&msm_gpio_26>;

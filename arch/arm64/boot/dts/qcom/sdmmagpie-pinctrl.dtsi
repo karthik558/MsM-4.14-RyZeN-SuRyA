@@ -833,7 +833,7 @@
 				};
 
 				config {
-					pins = "gpio46", "gpio47";
+					pins = "gpio6", "gpio7";
 					drive-strength = <2>;
 					bias-pull-up;
 				};
