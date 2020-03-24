@@ -134,7 +134,7 @@
 		//pinctrl-0 = <&cam_mipi_switch_en>;
 		vin-supply = <&pm6150l_bob>;
 	};
-
+/*
 	camera_mipi_switch_sel: gpio-regulator@5 {
 		compatible = "regulator-fixed";
 		reg = <0x05 0x00>;
@@ -148,6 +148,7 @@
 		//pinctrl-0 = <&cam_mipi_switch_sel>;
 		vin-supply = <&pm6150l_bob>;
 	};
+*/
 };
 
 &cam_cci0 {
@@ -482,15 +483,13 @@
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_vana>;
 		cam_vdig-supply = <&camera_vdig>;//gpio12
-		cam_v_custom1-supply = <&camera_mipi_switch_en>;
-		cam_v_custom2-supply = <&camera_mipi_switch_sel>;
 		cam_clk-supply = <&titan_top_gdsc>;
 		regulator-names = "cam_vio", "cam_vana", "cam_vdig",
-			"cam_clk","cam_v_custom1","cam_v_custom2";
+			"cam_clk";
 		rgltr-cntrl-support;
-		rgltr-min-voltage = <1800000 2800000 2800000 0 2800000 2800000>;
-		rgltr-max-voltage = <1800000 2800000 2800000 0 2800000 2800000>;
-		rgltr-load-current = <0 80000 105000 0 105000 105000>;
+		rgltr-min-voltage = <1800000 2800000 2800000 0>;
+		rgltr-max-voltage = <1800000 2800000 2800000 0>;
+		rgltr-load-current = <0 80000 105000 0>;
 		gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_active
@@ -500,16 +499,19 @@
 		gpios = <&tlmm 13 0>,
 			<&tlmm 23 0>,
 			<&tlmm 68 0>,
-			<&tlmm 21 0>;
+			<&tlmm 21 0>,
+			<&pm6150_gpios 3 0>;
 		gpio-reset = <1>;
 		gpio-custom1 = <2>;
 		gpio-custom2 = <3>;
-		gpio-req-tbl-num = <0 1 2 3>;
-		gpio-req-tbl-flags = <1 0 0 0>;
+		gpio-standby = <4>;
+		gpio-req-tbl-num = <0 1 2 3 4>;
+		gpio-req-tbl-flags = <1 0 0 0 0>;
 		gpio-req-tbl-label = "CAMIF_MCLK0",
 					"CAM_RESET4",
 					"CAM_CUSTOM1",
-					"CAM_CUSTOM2";
+					"CAM_CUSTOM2",
+					"CAM_SEL";
 		sensor-mode = <0>;
 		cci-device = <0>;
 		cci-master = <1>;
@@ -532,16 +534,13 @@
 		//actuator-src = <&actuator_rear_aux>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_vana>;
-		//cam_v_custom1-supply = <&camera_mipi_switch_en>;
-		cam_v_custom1-supply = <&camera_mipi_switch_sel>;
-		//cam_vdig-supply = <&pm8009_l4>;
 		cam_clk-supply = <&titan_top_gdsc>;
-		regulator-names = "cam_vio", "cam_vana", "cam_v_custom1",
+		regulator-names = "cam_vio", "cam_vana",
 				"cam_clk";
 		rgltr-cntrl-support;
-		rgltr-min-voltage = <1800000 2800000 2800000 0>;
-		rgltr-max-voltage = <1800000 2800000 2800000 0>;
-		rgltr-load-current = <0 80000 105000 0>;
+		rgltr-min-voltage = <1800000 2800000 0>;
+		rgltr-max-voltage = <1800000 2800000 0>;
+		rgltr-load-current = <0 80000 0>;
 		gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk3_active>;
