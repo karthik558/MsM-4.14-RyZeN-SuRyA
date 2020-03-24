@@ -241,6 +241,46 @@
 			};
 		};
 
+		/*awinic add for aw8624 start*/
+		msm_gpio_63:msm_gpio_63 {
+			mux {
+				pins="gpio63";
+				function= "gpio";
+			};
+			config {
+				pins= "gpio63";
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+		};
+		msm_gpio_63_output_high:msm_gpio_63_output_high {
+			mux {
+				pins = "gpio63";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio63";
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
+		};
+		/*aw8624 interrupt set*/
+		msm_gpio_26:msm_gpio_26 {
+			mux {
+				pins = "gpio26";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio26";
+				drive-strength = <2>;
+				bias-pull-up;
+				input-enable;
+			};
+		};
+		/*awinic add for aw8624 end*/
+
 		/* SE 1 pin mappings */
 		qupv3_se1_i2c_pins: qupv3_se1_i2c_pins {
 			qupv3_se1_i2c_active: qupv3_se1_i2c_active {
@@ -755,7 +795,7 @@
 				};
 
 				config {
-					pins = "gpio6", "gpio7";
+					pins = "gpio46", "gpio47";
 					drive-strength = <2>;
 					bias-pull-up;
 				};
