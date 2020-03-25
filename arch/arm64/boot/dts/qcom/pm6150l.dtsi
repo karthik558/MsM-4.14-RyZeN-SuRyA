@@ -316,7 +316,8 @@
 					  "flash-irq";
 			qcom,pmic-revid = <&pm6150l_revid>;
 			qcom,auto-calibration;
-			status = "disabled";
+			qcom,string-cfg = <7>;
+			status = "ok";
 
 			wled_flash: qcom,wled-flash {
 				label = "flash";

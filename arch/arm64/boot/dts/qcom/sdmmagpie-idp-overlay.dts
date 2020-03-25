@@ -27,6 +27,8 @@
 	qcom,board-id = <34 0>;
 };
 
-&dsi_sw43404_amoled_video_display {
+
+&dsi_nt36672c_tianma_fhd_video_display {
+
 	qcom,dsi-display-active;
 };
