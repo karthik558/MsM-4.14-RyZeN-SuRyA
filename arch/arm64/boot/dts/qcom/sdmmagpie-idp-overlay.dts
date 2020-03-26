@@ -19,6 +19,7 @@
 #include "sdmmagpie-idp.dtsi"
 #include "sdmmagpie-audio-overlay.dtsi"
 #include "haptic.dtsi"
+#include "touchscreen.dtsi"
 
 / {
 	model = "IDP";
