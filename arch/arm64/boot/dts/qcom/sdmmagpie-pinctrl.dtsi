@@ -1593,12 +1593,12 @@
 		cam_sensor_mclk2_active: cam_sensor_mclk2_active {
 			/* MCLK2 */
 			mux {
-				pins = "gpio15";
+				pins = "gpio15","gpio32","gpio33";
 				function = "cam_mclk";
 			};
 
 			config {
-				pins = "gpio15";
+				pins = "gpio15","gpio32","gpio33";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -1607,14 +1607,43 @@
 		cam_sensor_mclk2_suspend: cam_sensor_mclk2_suspend {
 			/* MCLK2 */
 			mux {
-				pins = "gpio15";
+				pins = "gpio15","gpio32","gpio33";
 				function = "cam_mclk";
 			};
 
 			config {
-				pins = "gpio15";
+				pins = "gpio15","gpio32","gpio33";
 				bias-pull-down; /* PULL DOWN */
 				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_rear_temp_active:cam_sensor_rear_temp_active{
+						/* REST */
+			mux {
+				pins = "gpio72";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio72";
+				bias-disable;/* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_rear_temp_suspend:cam_sensor_rear_temp_suspend{
+						/* REST */
+			mux {
+				pins = "gpio72";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio72";
+				bias-pull-down;/* PULL DOWN */
+				drive-strength = <2>; /* 2 MA */
+				output-low;
 			};
 		};
 
