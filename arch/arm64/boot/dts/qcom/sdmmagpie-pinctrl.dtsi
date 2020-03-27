@@ -1189,7 +1189,8 @@
 					pins = "gpio101", "gpio102", "gpio103",
 								"gpio92";
 					drive-strength = <6>;
-					bias-disable;
+					bias-pull-down;
+					output-low;
 				};
 			};
 		};

@@ -106,6 +106,19 @@
 	};
 };
 
+&qupv3_se11_spi {
+	status = "ok";
+	device@1 {
+		compatible = "qcom,spi-msm-codec-slave";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <1>; /* Chip select 0 */
+		spi-max-frequency = <1000000>;
+		spi-cpol;
+	};
+};
+
+
 &sdhc_1 {
 	vdd-supply = <&pm6150_l19>;
 	qcom,vdd-voltage-level = <2950000 2950000>;
