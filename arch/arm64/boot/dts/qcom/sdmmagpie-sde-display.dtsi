@@ -792,12 +792,12 @@
 };
 
 &dsi_nt36672c_tianma_fhd_video {
-	qcom,mdss-dsi-t-clk-post = <0x0d>;
-	qcom,mdss-dsi-t-clk-pre = <0x2d>;
+	qcom,mdss-dsi-t-clk-post = <0x16>;
+	qcom,mdss-dsi-t-clk-pre = <0x32>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
-			qcom,mdss-dsi-panel-phy-timings =[00 1c 08 07 23 22 07
-				 07 05 02 04 00];
+			qcom,mdss-dsi-panel-phy-timings =[00 41 12 12 31 2d 12
+				 13 0d 02 04 00];
 			qcom,display-topology = <1 1 1>;
 			qcom,default-topology-index = <0>;
 		};
