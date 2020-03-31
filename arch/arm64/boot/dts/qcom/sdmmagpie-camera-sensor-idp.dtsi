@@ -406,18 +406,12 @@
 		pinctrl-1 = <&cam_sensor_mclk0_suspend
 				&cam_sensor_rear_depth_suspend>;
 		gpios = <&tlmm 13 0>,
-				<&tlmm 93 0>,
-				<&tlmm 68 0>,
-				<&tlmm 21 0>;
+				<&tlmm 93 0>;
 		gpio-reset = <1>;
-		gpio-custom1 = <2>;
-		gpio-custom2 = <3>;
-		gpio-req-tbl-num = <0 1 2 3>;
-		gpio-req-tbl-flags = <1 0 0 0>;
+		gpio-req-tbl-num = <0 1>;
+		gpio-req-tbl-flags = <1 0>;
 		gpio-req-tbl-label = "CAMIF_MCLK0",
-					"CAM_RESET1",
-					"GPIO_CUSTOM1",
-					"GPIO_CUSTOM2";
+					"CAM_RESET1";
 		sensor-mode = <0>;
 		cci-master = <1>;
 		status = "ok";
