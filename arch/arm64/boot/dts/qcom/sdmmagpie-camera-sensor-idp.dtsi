@@ -454,19 +454,13 @@
 				&cam_sensor_front_suspend>;
 		gpios = <&tlmm 13 0>,
 			<&tlmm 23 0>,
-			<&tlmm 68 0>,
-			<&tlmm 21 0>,
 			<&pm6150_gpios 3 0>;
 		gpio-reset = <1>;
-		gpio-custom1 = <2>;
-		gpio-custom2 = <3>;
-		gpio-standby = <4>;
-		gpio-req-tbl-num = <0 1 2 3 4>;
-		gpio-req-tbl-flags = <1 0 0 0 0>;
+		gpio-standby = <2>;
+		gpio-req-tbl-num = <0 1 2>;
+		gpio-req-tbl-flags = <1 0 0>;
 		gpio-req-tbl-label = "CAMIF_MCLK0",
 					"CAM_RESET4",
-					"CAM_CUSTOM1",
-					"CAM_CUSTOM2",
 					"CAM_SEL";
 		sensor-mode = <0>;
 		cci-device = <0>;
