@@ -155,7 +155,7 @@ static ssize_t lct_proc_tp_work_read(struct file *file, char __user *buf,
 		return -ENOMEM;
 
 	cnt =
-	    snprintf(page, sizeof(page), "%s",
+	    snprintf(page, PAGE_SIZE, "%s",
 		     (lct_tp_p->enable_tp_work_flag ? "1\n" : "0\n"));
 
 	cnt = simple_read_from_buffer(buf, size, ppos, page, cnt);

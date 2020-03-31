@@ -165,7 +165,7 @@ static ssize_t lct_proc_tp_grip_area_read(struct file *file, char __user *buf,
 		}
 		lct_tp_p->screen_angle = ret;
 	}
-	cnt = snprintf(page, sizeof(page), "%d\n", lct_tp_p->screen_angle);
+	cnt = snprintf(page, PAGE_SIZE, "%d\n", lct_tp_p->screen_angle);
 	cnt = simple_read_from_buffer(buf, size, ppos, page, cnt);
 	if (*ppos != cnt)
 		*ppos = cnt;

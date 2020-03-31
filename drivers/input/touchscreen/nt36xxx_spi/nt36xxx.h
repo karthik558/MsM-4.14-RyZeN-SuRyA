@@ -104,10 +104,10 @@ extern const uint16_t gesture_key_array[];
 #define FIRMWARE_NAME_LEN    256
 #define BOOT_UPDATE_FIRMWARE_NAME         "novatek_ts_fw.bin"
 #define BOOT_UPDATE_TIANMA_FIRMWARE_NAME  "novatek_ts_tianma_fw.bin"
-#define BOOT_UPDATE_EBBG_FIRMWARE_NAME    "novatek_ts_ebbg_fw.bin"
+#define BOOT_UPDATE_HUAXING_FIRMWARE_NAME    "novatek_ts_huaxing_fw.bin"
 #define MP_UPDATE_FIRMWARE_NAME           "novatek_ts_mp.bin"
 #define MP_UPDATE_TIANMA_FIRMWARE_NAME    "novatek_ts_tianma_mp.bin"
-#define MP_UPDATE_EBBG_FIRMWARE_NAME      "novatek_ts_ebbg_mp.bin"
+#define MP_UPDATE_HUAXING_FIRMWARE_NAME      "novatek_ts_huaxing_mp.bin"
 
 //---ESD Protect.---
 #define NVT_TOUCH_ESD_PROTECT 0
@@ -115,7 +115,7 @@ extern const uint16_t gesture_key_array[];
 #define NVT_TOUCH_WDT_RECOVERY 1
 
 //enable 'check touch vendor' feature
-//#define CHECK_TOUCH_VENDOR
+#define CHECK_TOUCH_VENDOR
 
 //enable tp work feature
 #define LCT_TP_WORK_EN      0
@@ -139,9 +139,8 @@ typedef struct touchscreen_usb_plugin_data {
 
 //---Touch Vendor ID---
 #define TP_VENDOR_UNKNOWN   0x00
-#define TP_VENDOR_TIANMA    0x01
-#define TP_VENDOR_HUAXING   0x02
-#define TP_VENDOR_EBBG      0x03
+#define TP_VENDOR_HUAXING   0x01
+#define TP_VENDOR_TIANMA    0x02
 
 /* 2019.12.16 longcheer taocheng add (xiaomi game mode) start */
 #define NVT_REG_MONITOR_MODE                0x7000

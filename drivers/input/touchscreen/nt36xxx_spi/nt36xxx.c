@@ -44,8 +44,7 @@
 
 #ifdef CHECK_TOUCH_VENDOR
 extern char *saved_command_line;
-
-//---Touch Vendor ID---
+extern char lcd_name[128];
 static uint8_t touch_vendor_id;
 #endif
 
@@ -785,13 +784,17 @@ info_retry:
 
 #ifdef CHECK_TOUCH_VENDOR
 	switch (ts->touch_vendor_id) {
+	case TP_VENDOR_HUAXING:
+		snprintf(tp_info_buf, PAGE_SIZE, "[Vendor]huaxing,[FW]0x%02x,[IC]nt36672c\n", ts->fw_ver);
+		update_lct_tp_info(tp_info_buf, NULL);
+		break;
 	case TP_VENDOR_TIANMA:
-		snprintf(tp_info_buf, sizeof(tp_info_buf), "[Vendor]tianma,[FW]0x%02x,[IC]nt36675\n", ts->fw_ver);
+		snprintf(tp_info_buf, PAGE_SIZE, "[Vendor]tianma,[FW]0x%02x,[IC]nt36672c\n", ts->fw_ver);
 		update_lct_tp_info(tp_info_buf, NULL);
 		break;
 	}
 #else
-	snprintf(tp_info_buf, sizeof(tp_info_buf), "[Vendor]unknown,[FW]0x%02x,[IC]nt36672\n", ts->fw_ver);
+	snprintf(tp_info_buf, PAGE_SIZE, "[Vendor]unknown,[FW]0x%02x,[IC]nt36672c\n", ts->fw_ver);
 	update_lct_tp_info(tp_info_buf, NULL);
 #endif
 
@@ -2231,6 +2234,11 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 #ifdef CHECK_TOUCH_VENDOR
 	ts->touch_vendor_id = touch_vendor_id;
 	switch (ts->touch_vendor_id) {
+	case TP_VENDOR_HUAXING:
+		memcpy(ts->boot_update_firmware_name, BOOT_UPDATE_HUAXING_FIRMWARE_NAME,
+				sizeof(BOOT_UPDATE_HUAXING_FIRMWARE_NAME));
+		memcpy(ts->mp_update_firmware_name, MP_UPDATE_HUAXING_FIRMWARE_NAME, sizeof(MP_UPDATE_HUAXING_FIRMWARE_NAME));
+		break;
 	case TP_VENDOR_TIANMA:
 		memcpy(ts->boot_update_firmware_name, BOOT_UPDATE_TIANMA_FIRMWARE_NAME,
 				sizeof(BOOT_UPDATE_TIANMA_FIRMWARE_NAME));
@@ -3230,18 +3238,21 @@ static int32_t __init nvt_driver_init(void)
 	int32_t ret = 0;
 
 	NVT_LOG("start\n");
-
+	printk("wj----saved_command_line=%s", saved_command_line);
+	printk("wj----lcd_name=%s", lcd_name);
 #ifdef CHECK_TOUCH_VENDOR
 	//Check TP vendor
-
-	if (IS_ERR_OR_NULL(saved_command_line)) {
+	if (IS_ERR_OR_NULL(lcd_name)) {
 		NVT_ERR("saved_command_line ERROR!\n");
 		ret = -ENOMEM;
 		goto err_driver;
 	} else {
-		if (strnstr(saved_command_line, "tianma") != NULL) {
+		if (strnstr(lcd_name, "huaxing", strlen(lcd_name)) != NULL) {
+			touch_vendor_id = TP_VENDOR_HUAXING;
+			NVT_LOG("TP info: [Vendor]huaxing [IC]nt36672c\n");
+		} else if (strnstr(lcd_name, "tianma", strlen(lcd_name)) != NULL) {
 			touch_vendor_id = TP_VENDOR_TIANMA;
-			NVT_LOG("TP info: [Vendor]tianma [IC]nt36675\n");
+			NVT_LOG("TP info: [Vendor]tianma [IC]nt36672c\n");
 		} else {
 			touch_vendor_id = TP_VENDOR_UNKNOWN;
 			NVT_ERR("Unknown Touch\n");
@@ -3256,7 +3267,7 @@ static int32_t __init nvt_driver_init(void)
 	//	NVT_LOG("androidboot.mode=charger, doesn't support touch in the charging mode!\n");
 	//	ret = -ENODEV;
 	//	goto err_driver;
-	}
+	//}
 #endif
 
 	//---add spi driver---

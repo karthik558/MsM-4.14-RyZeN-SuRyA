@@ -381,9 +381,10 @@ static int32_t nvt_read_ram_and_save_file(uint32_t addr, uint16_t len, char *nam
 	uint8_t *fbufp = NULL;
 	int32_t ret = 0;
 	struct file *fp = NULL;
+	struct filename *vts_name;
 	mm_segment_t org_fs;
 
-	snprintf(file, sizeof(file),  "%s/dump_%s.bin", NVT_DUMP_PARTITION_PATH, name);
+	snprintf(file, PAGE_SIZE,  "%s/dump_%s.bin", NVT_DUMP_PARTITION_PATH, name);
 	NVT_LOG("Dump [%s] from 0x%08X to 0x%08X\n", file, addr, addr+len);
 
 	fbufp = (uint8_t *)kzalloc(len+1, GFP_KERNEL);
@@ -395,8 +396,9 @@ static int32_t nvt_read_ram_and_save_file(uint32_t addr, uint16_t len, char *nam
 
 	org_fs = get_fs();
 	set_fs(KERNEL_DS);
+	vts_name = getname_kernel(file);
+	fp = file_open_name(vts_name, O_RDWR | O_CREAT, 0644);
 	//fp = filp_open(file, O_RDWR | O_CREAT, 0644);
-	fp = NULL;
 	if (fp == NULL || IS_ERR(fp)) {
 		ret = -ENOMEM;
 		NVT_ERR("open file failed\n");

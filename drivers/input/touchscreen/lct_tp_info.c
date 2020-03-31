@@ -200,10 +200,10 @@ static ssize_t lct_proc_tp_info_read(struct file *file, char __user *buf,
 	page = kzalloc(128, GFP_KERNEL);
 
 	if (NULL == lct_tp_p->tp_info_buf)
-		cnt = snprintf(page, sizeof(page), "No touchpad\n");
+		cnt = snprintf(page, PAGE_SIZE, "No touchpad\n");
 	else
 		cnt =
-		    snprintf(page, sizeof(page), "%s",
+		    snprintf(page, PAGE_SIZE, "%s",
 				(strlen(lct_tp_p->tp_info_buf) ? lct_tp_p->tp_info_buf : "Unknown touchpad"));
 
 	cnt = simple_read_from_buffer(buf, size, ppos, page, cnt);
@@ -234,10 +234,10 @@ static ssize_t lct_proc_tp_lockdown_info_read(struct file *file,
 	page = kzalloc(128, GFP_KERNEL);
 
 	if (NULL == lct_tp_p->tp_lockdown_info_buf)
-		cnt = snprintf(page, sizeof(page), "No touchpad\n");
+		cnt = snprintf(page, PAGE_SIZE, "No touchpad\n");
 	else
 		cnt =
-		    snprintf(page, sizeof(page), "%s",
+		    snprintf(page, PAGE_SIZE, "%s",
 			     (strlen(lct_tp_p->tp_lockdown_info_buf) ?
 			      lct_tp_p->tp_lockdown_info_buf : "Unknown touchpad"));
 

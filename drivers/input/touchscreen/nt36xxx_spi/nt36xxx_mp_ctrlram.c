@@ -363,6 +363,7 @@ static int32_t nvt_save_rawdata_to_csv(int32_t *rawdata, uint8_t x_ch, uint8_t y
 	int32_t write_ret = 0;
 	uint32_t output_len = 0;
 	loff_t pos = 0;
+	struct filename *vts_name;
 #if TOUCH_KEY_NUM > 0
 	int32_t k = 0;
 	int32_t keydata_output_offset = 0;
@@ -397,8 +398,9 @@ static int32_t nvt_save_rawdata_to_csv(int32_t *rawdata, uint8_t x_ch, uint8_t y
 
 	org_fs = get_fs();
 	set_fs(KERNEL_DS);
+	vts_name = getname_kernel(file_path);
+	fp = file_open_name(vts_name, O_RDWR | O_CREAT, 0644);
 	//fp = filp_open(file_path, O_RDWR | O_CREAT, 0644);
-	fp = NULL;
 	if (fp == NULL || IS_ERR(fp)) {
 		NVT_ERR("open %s failed\n", file_path);
 		set_fs(org_fs);
@@ -449,7 +451,7 @@ static int32_t nvt_polling_hand_shake_status(void)
 {
 	uint8_t buf[8] = {0};
 	int32_t i = 0;
-	const int32_t retry = 50;
+	const int32_t retry = 250;
 
 	for (i = 0; i < retry; i++) {
 		//---set xdata index to EVENT BUF ADDR---

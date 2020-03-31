@@ -43,6 +43,7 @@
 #define MAX_PANEL_JITTER		10
 #define DEFAULT_PANEL_PREFILL_LINES	25
 #define TICKS_IN_MICRO_SECOND		1000000
+char lcd_name[128];
 
 enum dsi_dsc_ratio_type {
 	DSC_8BPC_8BPP,
@@ -3222,6 +3223,8 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 				"qcom,mdss-dsi-panel-name", NULL);
 	if (!panel->name)
 		panel->name = DSI_PANEL_DEFAULT_LABEL;
+
+	strlcpy(lcd_name, panel->name, sizeof(lcd_name));
 
 	/*
 	 * Set panel type to LCD as default.

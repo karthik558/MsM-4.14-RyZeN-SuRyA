@@ -143,7 +143,7 @@ static ssize_t tp_selftest_proc_read(struct file *file, char __user *buf,
 		tp_selftest_work_func();
 
 	page = kzalloc(128, GFP_KERNEL);
-	cnt = snprintf(page, sizeof(page), "%s", ft_tp_selftest_status);
+	cnt = snprintf(page, PAGE_SIZE, "%s", ft_tp_selftest_status);
 	cnt = simple_read_from_buffer(buf, size, ppos, page, cnt);
 	if (*ppos != cnt)
 		*ppos = cnt;

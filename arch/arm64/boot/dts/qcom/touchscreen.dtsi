@@ -38,13 +38,13 @@
 		novatek,spi-rd-fast-addr = <0x03F310 >;
 
 		/* MP */
-		//novatek,mp-support-dt;
+		novatek,mp-support-dt;
 
 		/* for Xiaomi J20 672c HX 6.668" */
-		novatek-mp-criteria-592E@0 {	/*{{{ */
+		novatek-mp-criteria-5938@0 {	/*{{{ */
 			#address-cells = <1>;
 			#size-cells = <0>;
-			compatible = "novatek-mp-criteria-592E";
+			compatible = "novatek-mp-criteria-5938";
 
 			/* MP Config */
 			IC_X_CFG_SIZE = <16 >;
