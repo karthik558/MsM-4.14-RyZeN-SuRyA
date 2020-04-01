@@ -44,7 +44,6 @@
 
 #ifdef CHECK_TOUCH_VENDOR
 extern char *saved_command_line;
-extern char lcd_name[128];
 static uint8_t touch_vendor_id;
 #endif
 
@@ -3238,19 +3237,17 @@ static int32_t __init nvt_driver_init(void)
 	int32_t ret = 0;
 
 	NVT_LOG("start\n");
-	printk("wj----saved_command_line=%s", saved_command_line);
-	printk("wj----lcd_name=%s", lcd_name);
 #ifdef CHECK_TOUCH_VENDOR
 	//Check TP vendor
-	if (IS_ERR_OR_NULL(lcd_name)) {
+	if (IS_ERR_OR_NULL(saved_command_line)) {
 		NVT_ERR("saved_command_line ERROR!\n");
 		ret = -ENOMEM;
 		goto err_driver;
 	} else {
-		if (strnstr(lcd_name, "huaxing", strlen(lcd_name)) != NULL) {
+		if (strnstr(saved_command_line, "huaxing", strlen(saved_command_line)) != NULL) {
 			touch_vendor_id = TP_VENDOR_HUAXING;
 			NVT_LOG("TP info: [Vendor]huaxing [IC]nt36672c\n");
-		} else if (strnstr(lcd_name, "tianma", strlen(lcd_name)) != NULL) {
+		} else if (strnstr(saved_command_line, "tianma", strlen(saved_command_line)) != NULL) {
 			touch_vendor_id = TP_VENDOR_TIANMA;
 			NVT_LOG("TP info: [Vendor]tianma [IC]nt36672c\n");
 		} else {

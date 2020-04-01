@@ -1469,6 +1469,8 @@ int lct_nvt_tp_selftest_callback(unsigned char cmd)
 		}
 	}
 
+	NVT_LOG("TestResult_Short=%d, TestResult_Open=%d, TestResult_FW_Rawdata=%d, TestResult_Noise=%d\n",
+			TestResult_Short, TestResult_Open, TestResult_FW_Rawdata, TestResult_Noise);
 	NVT_LOG("--\n");
 	if (!TestResult_Short && !TestResult_Open && !TestResult_FW_Rawdata && !TestResult_Noise)
 		return 2;//PASS
