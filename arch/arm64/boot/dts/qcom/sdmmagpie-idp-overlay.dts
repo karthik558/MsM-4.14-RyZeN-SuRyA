@@ -28,8 +28,9 @@
 	qcom,board-id = <34 0>;
 };
 
-
+&dsi_nt36672c_huaxing_fhd_video_display {
+	qcom,dsi-display-active;
+};
 &dsi_nt36672c_tianma_fhd_video_display {
-
 	qcom,dsi-display-active;
 };
