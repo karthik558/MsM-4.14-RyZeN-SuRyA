@@ -584,20 +584,14 @@
 		pinctrl-1 = <&cam_sensor_mclk2_suspend
 				&cam_sensor_rear_temp_suspend>;
 		gpios = <&tlmm 15 0>,
-			<&tlmm 72 0>,
-			<&tlmm 32 0>,
-			<&tlmm 33 0>;
+			<&tlmm 72 0>;
 			//<&tlmm 88 0>;
 		gpio-reset = <1>;
-		gpio-custom1 = <2>;//avdd
-		gpio-custom2 = <3>;//dvdd
 		//gpio-standby = <4>;//vaf
-		gpio-req-tbl-num = <0 1 2 3>;
-		gpio-req-tbl-flags = <1 0 0 0>;
+		gpio-req-tbl-num = <0 1>;
+		gpio-req-tbl-flags = <1 0>;
 		gpio-req-tbl-label = "CAMIF_MCLK2",
-					"CAM_RESET_N",
-					"CAM_AVDD2_8V",
-					"CAM_DVDD1_1V";
+					"CAM_RESET_N";
 					//"CAM_STANDBY";//vafs
 		sensor-mode = <0>;
 		cci-master = <1>;
