@@ -370,6 +370,9 @@ int32_t cam_sensor_update_slave_info(struct cam_cmd_probe *probe_info,
 	s_ctrl->pipeline_delay =
 		probe_info->reserved;
 
+//lugang add sensor node info
+	s_ctrl->sensordata->camera_id = probe_info->camera_id;
+	s_ctrl->sensordata->sensorName = probe_info->sensorName;
 	s_ctrl->sensor_probe_addr_type =  probe_info->addr_type;
 	s_ctrl->sensor_probe_data_type =  probe_info->data_type;
 	CAM_DBG(CAM_SENSOR,
@@ -655,6 +658,83 @@ int cam_sensor_match_id(struct cam_sensor_ctrl_t *s_ctrl)
 	return rc;
 }
 
+// add sensor info for factory mode begin
+static struct kobject *msm_sensor_device;
+static char module_info[120] = {0};
+#define CAM_BACK_MAIN 0
+#define CAM_AUX_DEPTH 1
+#define CAM_FRONT 2
+#define CAM_AUX_WIDE 3
+#define CAM_AUX_MACRO 4
+#define CAM_AUX_TELE 5
+
+void msm_sensor_set_module_info(struct cam_sensor_ctrl_t *s_ctrl)
+{
+	printk("s_ctrl->sensordata->camera_type = %d\n", s_ctrl->sensordata->camera_id);
+	switch (s_ctrl->sensordata->camera_id) {
+	case CAM_BACK_MAIN:
+		strcat(module_info, "back_main:");
+		break;
+	case CAM_FRONT:
+		strcat(module_info, "front:");
+		break;
+	case CAM_AUX_DEPTH:
+		strcat(module_info, "aux_back_depth:");
+		break;
+	case CAM_AUX_WIDE:
+		strcat(module_info, "aux_back_wide:");
+		break;
+	case CAM_AUX_MACRO:
+		strcat(module_info, "aux_back_macro:");
+		break;
+	case CAM_AUX_TELE:
+		strcat(module_info, "aux_back_tele:");
+		break;
+	default:
+		strcat(module_info, "unknown:");
+	 	break;
+	}
+	strcat(module_info, s_ctrl->sensordata->sensorName);
+	strcat(module_info, "\n");
+	printk("s_ctrl->sensordata->camera_type = %d,camera name = %s\n",
+		s_ctrl->sensordata->camera_id, s_ctrl->sensordata->sensorName);
+}
+
+static ssize_t msm_sensor_module_id_show(struct device *dev,
+	struct device_attribute *attr,
+	char *buf)
+{
+	ssize_t rc = 0;
+	sprintf(buf, "%s\n", module_info);
+	rc = strlen(buf) + 1;
+	return rc;
+}
+
+static DEVICE_ATTR(sensor, 0444, msm_sensor_module_id_show, NULL);
+
+int32_t msm_sensor_init_device_name(void)
+{
+	int32_t rc = 0;
+	pr_err("%s %d\n", __func__, __LINE__);
+	if (msm_sensor_device != NULL) {
+		pr_err("Macle android_camera already created\n");
+		return 0;
+	}
+	msm_sensor_device = kobject_create_and_add("android_camera", NULL);
+	if (msm_sensor_device == NULL) {
+		printk("%s: subsystem_register failed\n", __func__);
+		rc = -ENOMEM;
+		return rc;
+	}
+	rc = sysfs_create_file(msm_sensor_device, &dev_attr_sensor.attr);
+	if (rc) {
+		printk("%s: sysfs_create_file failed\n", __func__);
+		kobject_del(msm_sensor_device);
+	}
+	return 0;
+}
+//end
+
 int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 	void *arg)
 {
@@ -736,6 +816,10 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			msleep(20);
 			goto free_power_settings;
 		}
+
+		//lugang add sensor node info
+		msm_sensor_init_device_name();
+		msm_sensor_set_module_info(s_ctrl);
 
 		CAM_INFO(CAM_SENSOR,
 			"Probe success,slot:%d,slave_addr:0x%x,sensor_id:0x%x",
