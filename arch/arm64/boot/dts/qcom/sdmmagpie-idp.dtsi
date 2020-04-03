@@ -483,6 +483,18 @@
 		};
 	};
 
+	goodix_fp {
+		compatible = "goodix,fingerprint";
+		interrupt-parent = <&tlmm>;
+		interrupt = <89 0x0>;
+		vcc_spi-supply = <&pm6150l_l7>;
+		vcc_ana-supply = <&pm6150l_l7>;
+		vdd_io-supply = <&pm6150l_l7>;
+		fp-gpio-irq = <&tlmm 89 0x00>;
+		fp-gpio-reset = <&tlmm 90 0x00>;
+		status = "okay";
+	};
+
 	fpc1020 {
 		status = "ok";
 		compatible = "fpc,fpc1020";

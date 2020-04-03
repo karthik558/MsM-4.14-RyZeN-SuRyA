@@ -1,4 +1,4 @@
-menu "Fingerprint Drivers"
+ menu "Fingerprint Drivers"
 
 config FINGERPRINT_FPC1020
 	tristate "fpc fpc1020 fingerprint drvier support"

@@ -58,7 +58,7 @@
 #define PROC_NAME  "hwinfo"
 
 static struct proc_dir_entry *proc_entry;
-/*extern int fpsensor;*/
+extern int fpsensor;
 
 static const char * const pctl_names[] = {
 	"fpc1020_reset_reset",
@@ -595,7 +595,7 @@ static int proc_show_ver(struct seq_file *file,void *v)
 
 static int proc_open(struct inode *inode,struct file *file)
 {
-	//pr_info("fpc proc_open\n");
+	pr_info("fpc proc_opening\n");
 	single_open(file,proc_show_ver,NULL);
 	return 0;
 }
@@ -622,11 +622,13 @@ static int fpc1020_probe(struct platform_device *pdev)
 		rc = -ENOMEM;
 		goto exit;
 	}
-	/*if(fpsensor != 1){
-	pr_err("Macle fpc1020_probe failed as fpsensor=%d(1=fp)\n", fpsensor);
-	return -1;
+
+	if(fpsensor != 1){
+		pr_err("Macle fpc1020_probeing failed as fpsensor=%d(1=fp)\n", fpsensor);
+		return -ENOMEM;
 	}
-*/
+
+
 	fpc1020->dev = dev;
 	platform_set_drvdata(pdev, fpc1020);
 
