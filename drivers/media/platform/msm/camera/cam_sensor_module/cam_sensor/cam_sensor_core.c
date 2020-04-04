@@ -660,7 +660,7 @@ int cam_sensor_match_id(struct cam_sensor_ctrl_t *s_ctrl)
 
 // add sensor info for factory mode begin
 static struct kobject *msm_sensor_device;
-static char module_info[120] = {0};
+static char module_info[240] = {0};
 #define CAM_BACK_MAIN 0
 #define CAM_AUX_DEPTH 1
 #define CAM_FRONT 2
@@ -670,7 +670,7 @@ static char module_info[120] = {0};
 
 void msm_sensor_set_module_info(struct cam_sensor_ctrl_t *s_ctrl)
 {
-	printk("s_ctrl->sensordata->camera_type = %d\n", s_ctrl->sensordata->camera_id);
+/*	printk("s_ctrl->sensordata->camera_type = %d\n", s_ctrl->sensordata->camera_id);
 	switch (s_ctrl->sensordata->camera_id) {
 	case CAM_BACK_MAIN:
 		strcat(module_info, "back_main:");
@@ -692,12 +692,12 @@ void msm_sensor_set_module_info(struct cam_sensor_ctrl_t *s_ctrl)
 		break;
 	default:
 		strcat(module_info, "unknown:");
-	 	break;
+		break;
 	}
 	strcat(module_info, s_ctrl->sensordata->sensorName);
 	strcat(module_info, "\n");
 	printk("s_ctrl->sensordata->camera_type = %d,camera name = %s\n",
-		s_ctrl->sensordata->camera_id, s_ctrl->sensordata->sensorName);
+		s_ctrl->sensordata->camera_id, s_ctrl->sensordata->sensorName);*/
 }
 
 static ssize_t msm_sensor_module_id_show(struct device *dev,
@@ -705,7 +705,8 @@ static ssize_t msm_sensor_module_id_show(struct device *dev,
 	char *buf)
 {
 	ssize_t rc = 0;
-	sprintf(buf, "%s\n", module_info);
+
+	snprintf(buf, 240, "%s\n", module_info);
 	rc = strlen(buf) + 1;
 	return rc;
 }
@@ -715,6 +716,7 @@ static DEVICE_ATTR(sensor, 0444, msm_sensor_module_id_show, NULL);
 int32_t msm_sensor_init_device_name(void)
 {
 	int32_t rc = 0;
+
 	pr_err("%s %d\n", __func__, __LINE__);
 	if (msm_sensor_device != NULL) {
 		pr_err("Macle android_camera already created\n");
