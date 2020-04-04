@@ -670,34 +670,34 @@ static char module_info[240] = {0};
 
 void msm_sensor_set_module_info(struct cam_sensor_ctrl_t *s_ctrl)
 {
-/*	printk("s_ctrl->sensordata->camera_type = %d\n", s_ctrl->sensordata->camera_id);
+	printk("s_ctrl->sensordata->camera_type = %d\n", s_ctrl->sensordata->camera_id);
 	switch (s_ctrl->sensordata->camera_id) {
 	case CAM_BACK_MAIN:
-		strcat(module_info, "back_main:");
+		strlcat(module_info, "back_main:", 240);
 		break;
 	case CAM_FRONT:
-		strcat(module_info, "front:");
+		strlcat(module_info, "front:", 240);
 		break;
 	case CAM_AUX_DEPTH:
-		strcat(module_info, "aux_back_depth:");
+		strlcat(module_info, "aux_back_depth:", 240);
 		break;
 	case CAM_AUX_WIDE:
-		strcat(module_info, "aux_back_wide:");
+		strlcat(module_info, "aux_back_wide:", 240);
 		break;
 	case CAM_AUX_MACRO:
-		strcat(module_info, "aux_back_macro:");
+		strlcat(module_info, "aux_back_macro:", 240);
 		break;
 	case CAM_AUX_TELE:
-		strcat(module_info, "aux_back_tele:");
+		strlcat(module_info, "aux_back_tele:", 240);
 		break;
 	default:
-		strcat(module_info, "unknown:");
+		strlcat(module_info, "unknown:", 240);
 		break;
 	}
-	strcat(module_info, s_ctrl->sensordata->sensorName);
-	strcat(module_info, "\n");
+	strlcat(module_info, s_ctrl->sensordata->sensorName, 240);
+	strlcat(module_info, "\n", 240);
 	printk("s_ctrl->sensordata->camera_type = %d,camera name = %s\n",
-		s_ctrl->sensordata->camera_id, s_ctrl->sensordata->sensorName);*/
+		s_ctrl->sensordata->camera_id, s_ctrl->sensordata->sensorName);
 }
 
 static ssize_t msm_sensor_module_id_show(struct device *dev,
