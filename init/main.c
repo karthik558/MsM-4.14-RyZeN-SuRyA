@@ -556,7 +556,7 @@ asmlinkage __visible void __init start_kernel(void)
 	pr_notice("Kernel command line: %s\n", boot_command_line);
 
 	p = NULL;
-	p= strnstr(command_line, "androidboot.fpsensor=fpc",24);
+	p= strnstr(command_line, "androidboot.fpsensor=fpc", strlen(command_line));
 	if(p) {
 		fpsensor = 1;//fpc fingerprint
 		printk("I am fpc fingerprint  --syhf");

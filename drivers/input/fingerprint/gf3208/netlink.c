@@ -71,7 +71,7 @@ void nl_data_ready(struct sk_buff *__skb)
 int netlink_init(void)
 {
 	struct netlink_kernel_cfg netlink_cfg;
-
+	nl_sk = NULL;
 	memset(&netlink_cfg, 0, sizeof(struct netlink_kernel_cfg));
 
 	netlink_cfg.groups = 0;
