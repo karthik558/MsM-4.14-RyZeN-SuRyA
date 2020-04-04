@@ -3474,6 +3474,7 @@ static int aw8624_suspend(struct device *dev)
 	struct aw8624 *aw8624 = container_of(to_dev, struct aw8624, to_dev);
 
 	pr_info("%s enter\n", __func__);
+	return 0;
 	mutex_lock(&aw8624->lock);
 	hrtimer_cancel(&aw8624->timer);
 	aw8624->state = 0;
