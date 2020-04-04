@@ -339,40 +339,42 @@
 		clock-rates = <24000000>;
 	};
 
-	eeprom_triple_uw: qcom,eeprom@5 {
+	eeprom_rear_aux_tele: qcom,eeprom@5 {
 		cell-index = <5>;
 		reg = <0x5>;
 		compatible = "qcom,eeprom";
-		cam_vio-supply = <&pm8009_l7>;
-		cam_vana-supply = <&pm8009_l6>;
-		cam_vdig-supply = <&pm8009_l2>;
+		cam_vio-supply = <&pm6150_l13>;
+		cam_vdig-supply = <&camera_vdig>;
 		cam_clk-supply = <&titan_top_gdsc>;
-		regulator-names = "cam_vio", "cam_vana", "cam_vdig",
+		regulator-names = "cam_vio", "cam_vdig",
 			"cam_clk";
 		rgltr-cntrl-support;
-		rgltr-min-voltage = <1800000 2800000 1050000 0>;
-		rgltr-max-voltage = <1800000 2800000 1050000 0>;
-		rgltr-load-current = <0 80000 105000 0>;
+		rgltr-min-voltage = <1800000 2800000 0>;
+		rgltr-max-voltage = <1800000 2800000 0>;
+		rgltr-load-current = <0 105000 0>;
 		gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk2_active
-				 &cam_sensor_front_active>;
+				&cam_sensor_rear_temp_active>;
 		pinctrl-1 = <&cam_sensor_mclk2_suspend
-				 &cam_sensor_front_suspend>;
+				&cam_sensor_rear_temp_suspend>;
 		gpios = <&tlmm 15 0>,
-			<&pm8009_gpios 4 0>;
+			<&tlmm 72 0>;
+			//<&tlmm 88 0>;
 		gpio-reset = <1>;
+		//gpio-standby = <4>;//vaf
 		gpio-req-tbl-num = <0 1>;
 		gpio-req-tbl-flags = <1 0>;
 		gpio-req-tbl-label = "CAMIF_MCLK2",
-					"CAM_RESET2";
+					"CAM_RESET_N";
+					//"CAM_STANDBY";//vafs
 		sensor-mode = <0>;
 		cci-master = <1>;
 		status = "ok";
 		clocks = <&clock_camcc CAM_CC_MCLK2_CLK>;
 		clock-names = "cam_clk";
 		clock-cntl-level = "turbo";
-		clock-rates = <24000000>;
+		clock-rates = <19200000>;
 	};
 
 	qcom,cam-sensor@0 {
@@ -600,7 +602,7 @@
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
 		//led-flash-src = <&led_flash_rear_aux>;
-		//eeprom-src = <&eeprom_triple_rear_aux>;
+		eeprom-src = <&eeprom_rear_aux_tele>;
 		//actuator-src = <&actuator_triple_tele>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vdig-supply = <&camera_vdig>;
@@ -644,7 +646,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
-		eeprom-src = <&eeprom_triple_uw>;
+		//eeprom-src = <&eeprom_triple_uw>;
 		led-flash-src = <&led_flash_rear_aux2>;
 		actuator-src = <&actuator_rear_aux>;
 		cam_vio-supply = <&pm8009_l7>;
