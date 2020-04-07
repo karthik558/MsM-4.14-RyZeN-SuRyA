@@ -1829,14 +1829,12 @@ static int __diag_mask_init(struct diag_mask_info *mask_info, int mask_len,
 			return -ENOMEM;
 		}
 		kmemleak_not_leak(mask_info->update_buf);
-		mask_info->update_buf_client = kzalloc(MAX_USERSPACE_BUF_SIZ,
-							GFP_KERNEL);
+		mask_info->update_buf_client = vzalloc(MAX_USERSPACE_BUF_SIZ);
 		if (!mask_info->update_buf_client) {
 			kfree(mask_info->ptr);
 			mask_info->ptr = NULL;
 			return -ENOMEM;
 		}
-		kmemleak_not_leak(mask_info->update_buf_client);
 		mask_info->update_buf_client_len = 0;
 	}
 	return 0;
@@ -1852,7 +1850,7 @@ static void __diag_mask_exit(struct diag_mask_info *mask_info)
 	mask_info->ptr = NULL;
 	kfree(mask_info->update_buf);
 	mask_info->update_buf = NULL;
-	kfree(mask_info->update_buf_client);
+	vfree(mask_info->update_buf_client);
 	mask_info->update_buf_client = NULL;
 	mutex_unlock(&mask_info->lock);
 }
@@ -2050,7 +2048,7 @@ static void diag_msg_mask_exit(void)
 	}
 	kfree(msg_mask.update_buf);
 	msg_mask.update_buf = NULL;
-	kfree(msg_mask.update_buf_client);
+	vfree(msg_mask.update_buf_client);
 	msg_mask.update_buf_client = NULL;
 	mutex_unlock(&driver->msg_mask_lock);
 }
@@ -2183,6 +2181,7 @@ static void diag_event_mask_exit(void)
 {
 	kfree(event_mask.ptr);
 	kfree(event_mask.update_buf);
+	vfree(event_mask.update_buf_client);
 }
 
 int diag_copy_to_user_msg_mask(char __user *buf, size_t count,
