@@ -80,8 +80,20 @@
 				qcom,mdss-dsi-off-command =
 					[05 01 00 00 32 00 02 28 00
 					05 01 00 00 78 00 02 10 00];
+				qcom,mdss-dsi-cabc-on-command = [
+				];
+				qcom,mdss-dsi-cabc_movie-on-command = [
+				];
+				qcom,mdss-dsi-cabc_still-on-command  = [
+				];
+				qcom,mdss-dsi-cabc-off-command = [
+				];
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
+				qcom,mdss-dsi-cabc-on-command-state = "dsi_hs_mode";
+				qcom,mdss-dsi-cabc-off-command-state = "dsi_hs_mode";
+				qcom,mdss-dsi-cabc_movie-on-command-state = "dsi_hs_mode";
+				qcom,mdss-dsi-cabc_still-on-command-state = "dsi_hs_mode";
 				qcom,compression-mode = "dsc";
 				qcom,mdss-dsc-encoders = <1>;
 				qcom,mdss-dsc-slice-height = <20>;

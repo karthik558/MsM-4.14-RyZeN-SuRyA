@@ -718,4 +718,5 @@ int dsi_display_cont_splash_config(void *display);
 int dsi_display_get_panel_vfp(void *display,
 	int h_active, int v_active);
 
+int dsi_panel_set_feature(struct dsi_panel *panel,enum dsi_cmd_set_type type);
 #endif /* _DSI_DISPLAY_H_ */

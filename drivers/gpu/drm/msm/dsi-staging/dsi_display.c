@@ -5100,6 +5100,139 @@ static struct attribute_group dynamic_dsi_clock_fs_attrs_group = {
 	.attrs = dynamic_dsi_clock_fs_attrs,
 };
 
+static ssize_t dsi_display_set_cabc(struct device *dev, struct device_attribute *attr, const char *buf, size_t len)
+{
+		int rc = 0;
+		int param = 0;
+		struct dsi_display *display;
+
+		display = dev_get_drvdata(dev);
+		if (!display) {
+				pr_err("Invalid display\n");
+				return -EINVAL;
+		}
+
+		rc = kstrtoint(buf, 10, &param);
+		if (rc) {
+				pr_err("kstrtoint failed. rc=%d\n", rc);
+				return rc;
+		}
+
+		pr_info("xinj:_###_%s,set_cabc_cmd: %d\n", __func__, param);
+		switch (param) {
+		case 0x1: //cabc on
+				dsi_panel_set_feature(display->panel, DSI_CMD_SET_CABC_ON);
+				break;
+		case 0x2: //cabc off
+				dsi_panel_set_feature(display->panel, DSI_CMD_SET_CABC_OFF);
+				break;
+		default:
+				pr_err("unknown_cmds: %d\n", param);
+				break;
+		}
+		printk("xinj:_##### cabc over ###\n");
+		return len;
+}
+static ssize_t dsi_display_set_cabc_movie(struct device *dev,
+				struct device_attribute *attr, const char *buf, size_t len)
+{
+		int rc = 0;
+		int param = 0;
+		struct dsi_display *display;
+
+		display = dev_get_drvdata(dev);
+		if (!display) {
+				pr_err("Invalid display\n");
+				return -EINVAL;
+		}
+
+		rc = kstrtoint(buf, 10, &param);
+		if (rc) {
+				pr_err("kstrtoint failed. rc=%d\n", rc);
+				return rc;
+		}
+
+//		pr_info("xinj:_###_%s,set_cabc_movie_cmd: %d\n",__func__, param);
+		switch (param) {
+		case 0x1: //cabc_movie on
+				dsi_panel_set_feature(display->panel, DSI_CMD_SET_CABC_MOVIE_ON);
+				break;
+		case 0x2: //cabc_movie off
+				dsi_panel_set_feature(display->panel, DSI_CMD_SET_CABC_OFF);
+				break;
+		default:
+				pr_err("unknown_cmds: %d\n", param);
+				break;
+		}
+		printk("xinj:_##### cabc_movie over ###\n");
+		return len;
+}
+
+static ssize_t dsi_display_set_cabc_still(struct device *dev,
+				struct device_attribute *attr, const char *buf, size_t len)
+{
+		int rc = 0;
+		int param = 0;
+		struct dsi_display *display;
+
+		display = dev_get_drvdata(dev);
+		if (!display) {
+				pr_err("Invalid display\n");
+				return -EINVAL;
+		}
+
+		rc = kstrtoint(buf, 10, &param);
+		if (rc) {
+				pr_err("kstrtoint failed. rc=%d\n", rc);
+				return rc;
+		}
+
+//		pr_info("xinj:_###_%s,set_cabc_still_cmd: %d\n", __func__, param);
+		switch (param) {
+		case 0x1: //cabc_still on
+				dsi_panel_set_feature(display->panel, DSI_CMD_SET_CABC_STILL_ON);
+				break;
+		case 0x2: //cabc_still off
+				dsi_panel_set_feature(display->panel, DSI_CMD_SET_CABC_OFF);
+				break;
+		default:
+				pr_err("unknown_cmds: %d\n", param);
+				break;
+		}
+		printk("xinj:_##### cabc_still over ###\n");
+		return len;
+}
+
+static DEVICE_ATTR(dsi_display_cabc, 0644, NULL, dsi_display_set_cabc);
+static DEVICE_ATTR(dsi_display_cabc_movie, 0644, NULL, dsi_display_set_cabc_movie);
+static DEVICE_ATTR(dsi_display_cabc_still, 0644, NULL, dsi_display_set_cabc_still);
+
+static struct attribute *dsi_display_feature_attrs[] = {
+	&dev_attr_dsi_display_cabc.attr,
+	&dev_attr_dsi_display_cabc_movie.attr,
+	&dev_attr_dsi_display_cabc_still.attr,
+	NULL,
+};
+
+static struct attribute_group dsi_display_feature_attrs_group = {
+	.attrs = dsi_display_feature_attrs,
+};
+
+static int dsi_display_feature_create_sysfs(struct dsi_display *display)
+{
+		int ret = 0;
+		struct device *dev = &display->pdev->dev;
+
+		ret = sysfs_create_group(&dev->kobj,
+				&dsi_display_feature_attrs_group);
+		if (ret) {
+				pr_err("%s failed \n", __func__);
+				return -ENOMEM;
+		}
+		pr_info("xinj:%s success\n", __func__);
+		return ret;
+}
+
 static int dsi_display_validate_split_link(struct dsi_display *display)
 {
 	int i, rc = 0;
@@ -5446,10 +5579,9 @@ static int dsi_display_bind(struct device *dev,
 
 	/* register te irq handler */
 	dsi_display_register_te_irq(display);
-
 	dsi_display_whitepoint_create_sysfs();
 	set_lct_tp_lockdown_info_callback(lct_tp_lockdown_info_callback);
-
+	dsi_display_feature_create_sysfs(display);
 	goto error;
 
 error_host_deinit:
