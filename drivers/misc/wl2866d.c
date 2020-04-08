@@ -413,6 +413,7 @@ static int wl2866d_enable_power(struct  wl2866d_chip *chip)
 		dev_err(chip->dev, "Unable to enable vin2:%d\n", ret);
 		goto unset_vin2;
 	}
+	return 0;
 
 unset_vin2:
 	ret = regulator_set_voltage(chip->vin2, 0, VIN2_3P3_VOL_MAX);
