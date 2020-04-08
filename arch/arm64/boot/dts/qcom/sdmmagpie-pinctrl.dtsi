@@ -236,7 +236,7 @@
 					pins = "gpio49", "gpio50", "gpio51",
 								"gpio52";
 					drive-strength = <6>;
-					bias-disable;
+					bias-pull-up;
 				};
 			};
 		};
