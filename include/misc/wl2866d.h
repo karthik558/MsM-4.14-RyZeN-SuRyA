@@ -22,8 +22,8 @@
 
 #define VIN1_1P35_VOL_MIN   1350000
 #define VIN1_1P35_VOL_MAX   1350000
-#define VIN2_3P3_VOL_MIN    3300000
-#define VIN2_3P3_VOL_MAX    3300000
+#define VIN2_3P3_VOL_MIN    3296000
+#define VIN2_3P3_VOL_MAX    3296000
 
 struct wl2866d_chip {
 	struct device *dev;
