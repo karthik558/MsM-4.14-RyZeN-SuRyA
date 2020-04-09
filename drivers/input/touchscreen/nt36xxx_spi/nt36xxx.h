@@ -118,7 +118,7 @@ extern const uint16_t gesture_key_array[];
 #define CHECK_TOUCH_VENDOR
 
 //enable tp work feature
-#define LCT_TP_WORK_EN      0
+#define LCT_TP_WORK_EN      1
 
 //enable tp grip area feature
 #define LCT_TP_GRIP_AREA_EN 0
