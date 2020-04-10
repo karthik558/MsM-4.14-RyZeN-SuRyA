@@ -2954,6 +2954,7 @@ static int aw8624_read_chipid(struct aw8624 *aw8624)
 				"%s: failed to read register AW8624_REG_ID: %d\n",
 				__func__, ret);
 		}
+		pr_info("%s  reg %X \n", __func__, reg);
 		switch (reg) {
 		case 0x24:
 			pr_info("%s aw8624 detected\n", __func__);
@@ -4040,6 +4041,7 @@ aw8624_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	}
 
 	ret = aw8624_read_chipid(aw8624);
+	dev_err(&i2c->dev, "%s: aw8624_read_chipid ret=%d\n", __func__, ret);
 	if (ret != 0) {
 		dev_err(&i2c->dev, "%s: aw8624_read_chipid failed ret=%d\n",
 			__func__, ret);
