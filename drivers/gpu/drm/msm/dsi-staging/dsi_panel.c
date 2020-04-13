@@ -44,6 +44,8 @@
 #define DEFAULT_PANEL_PREFILL_LINES	25
 #define TICKS_IN_MICRO_SECOND		1000000
 
+char g_lcd_id[64];
+
 enum dsi_dsc_ratio_type {
 	DSC_8BPC_8BPP,
 	DSC_10BPC_8BPP,
@@ -3196,6 +3198,41 @@ end:
 	utils->node = panel->panel_of_node;
 }
 
+static ssize_t msm_fb_lcd_name(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	ssize_t ret = 0;
+
+	snprintf(buf, PAGE_SIZE, "%s\n", g_lcd_id);
+	ret = strlen(buf) + 1;
+	return ret;
+}
+
+static DEVICE_ATTR(lcd_name, 0664, msm_fb_lcd_name, NULL);
+
+static struct kobject *msm_lcd_name;
+
+static int msm_lcd_name_create_sysfs(void)
+{
+	int ret;
+
+	msm_lcd_name = kobject_create_and_add("android_lcd", NULL);
+	if (msm_lcd_name == NULL) {
+		pr_info("%s failed\n", __func__);
+		ret = -ENOMEM;
+		return ret;
+	}
+
+	ret = sysfs_create_file(msm_lcd_name, &dev_attr_lcd_name.attr);
+
+	if (ret) {
+		pr_info("%s failed\n", __func__);
+		kobject_del(msm_lcd_name);
+	}
+	return 0;
+}
+
+
 struct dsi_panel *dsi_panel_get(struct device *parent,
 				struct device_node *of_node,
 				struct device_node *parser_node,
@@ -3222,6 +3259,9 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 				"qcom,mdss-dsi-panel-name", NULL);
 	if (!panel->name)
 		panel->name = DSI_PANEL_DEFAULT_LABEL;
+
+	strlcpy(g_lcd_id, panel->name, sizeof(g_lcd_id));
+	msm_lcd_name_create_sysfs();
 
 	/*
 	 * Set panel type to LCD as default.
