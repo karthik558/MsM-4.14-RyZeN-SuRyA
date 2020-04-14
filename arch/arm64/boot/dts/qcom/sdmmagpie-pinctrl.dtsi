@@ -812,7 +812,7 @@
 		};
 
 		/* SE 7 pin mappings */
-		qupv3_se7_i2c_pins: qupv3_se7_i2c_pins {
+		/*qupv3_se7_i2c_pins: qupv3_se7_i2c_pins {
 			qupv3_se7_i2c_active: qupv3_se7_i2c_active {
 				mux {
 					pins = "gpio6", "gpio7";
@@ -871,9 +871,9 @@
 				};
 			};
 		};
-
+*/
 		/* SE 8 pin mappings */
-		qupv3_se8_i2c_pins: qupv3_se8_i2c_pins {
+	/*	qupv3_se8_i2c_pins: qupv3_se8_i2c_pins {
 			qupv3_se8_i2c_active: qupv3_se8_i2c_active {
 				mux {
 					pins = "gpio42", "gpio43";
@@ -900,7 +900,7 @@
 				};
 			};
 		};
-
+*/
 		qupv3_se8_2uart_pins: qupv3_se8_2uart_pins {
 			qupv3_se8_2uart_active: qupv3_se8_2uart_active {
 				mux {
@@ -929,7 +929,7 @@
 			};
 		};
 
-		qupv3_se8_spi_pins: qupv3_se8_spi_pins {
+		/*qupv3_se8_spi_pins: qupv3_se8_spi_pins {
 			qupv3_se8_spi_active: qupv3_se8_spi_active {
 				mux {
 					pins = "gpio42", "gpio43", "gpio44",
@@ -960,7 +960,7 @@
 				};
 			};
 		};
-
+*/
 		/* SE 9 pin mappings */
 		qupv3_se9_i2c_pins: qupv3_se9_i2c_pins {
 			qupv3_se9_i2c_active: qupv3_se9_i2c_active {

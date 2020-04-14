@@ -39,7 +39,7 @@
 		spi0 = &qupv3_se11_spi;
 		spi1 = &qupv3_se4_spi;
 		i2c0 = &qupv3_se2_i2c;
-		i2c1 = &qupv3_se7_i2c;
+		//i2c1 = &qupv3_se7_i2c;
 		i2c2 = &qupv3_se9_i2c;
 		serial0 = &qupv3_se8_2uart;
 		hsuart0 = &qupv3_se3_4uart;
