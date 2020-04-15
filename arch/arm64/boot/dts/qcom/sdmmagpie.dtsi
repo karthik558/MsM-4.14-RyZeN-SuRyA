@@ -784,7 +784,12 @@
 
 		qcom,coresight-jtagmm-cpu = <&CPU7>;
 	};
-
+	sn_fuse: snfuse@0x00786134 {
+		compatible = "qcom,sn-fuse";
+		reg = <0x00786134 0x4>,
+			<0x0078607c 0x4>;
+		reg-names = "sn-base","fuse-state";
+	};
 	intc: interrupt-controller@17a00000 {
 		compatible = "arm,gic-v3";
 		#interrupt-cells = <3>;
