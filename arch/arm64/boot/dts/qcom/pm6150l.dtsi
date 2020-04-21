@@ -324,6 +324,7 @@
 					  "flash-irq";
 			qcom,pmic-revid = <&pm6150l_revid>;
 			qcom,auto-calibration;
+			qcom,fs-current-limit = <20000>;
 			qcom,string-cfg = <7>;
 			status = "ok";
 
