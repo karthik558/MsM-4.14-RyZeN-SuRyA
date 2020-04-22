@@ -2587,8 +2587,8 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 	nvt_irq_enable(true);
 
 #ifdef CONFIG_PM
-	//ts->dev_pm_suspend = false;
-	//init_completion(&ts->dev_pm_suspend_completion);
+	ts->dev_pm_suspend = false;
+	init_completion(&ts->dev_pm_suspend_completion);
 #endif
 
 	pm_runtime_enable(&ts->client->dev);
@@ -2598,7 +2598,7 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 	g_touchscreen_usb_pulgin.event_callback = nvt_ts_usb_event_callback;
 #endif
 
-	//set_touchpanel_recovery_callback(nvt_ts_recovery_callback);
+	set_touchpanel_recovery_callback(nvt_ts_recovery_callback);
 
 #if 0
 	//spi bus pm_runtime_get
@@ -3170,10 +3170,10 @@ static void nvt_ts_late_resume(struct early_suspend *h)
 #ifdef CONFIG_PM
 static int nvt_pm_suspend(struct device *dev)
 {
-	//struct nvt_ts_data *ts = dev_get_drvdata(dev);
+	struct nvt_ts_data *ts = dev_get_drvdata(dev);
 
-	//ts->dev_pm_suspend = true;
-	//reinit_completion(&ts->dev_pm_suspend_completion);
+	ts->dev_pm_suspend = true;
+	reinit_completion(&ts->dev_pm_suspend_completion);
 	NVT_LOG("pm suspend");
 
 	return 0;
@@ -3181,10 +3181,10 @@ static int nvt_pm_suspend(struct device *dev)
 
 static int nvt_pm_resume(struct device *dev)
 {
-	//struct nvt_ts_data *ts = dev_get_drvdata(dev);
+	struct nvt_ts_data *ts = dev_get_drvdata(dev);
 
-	//ts->dev_pm_suspend = false;
-	//complete(&ts->dev_pm_suspend_completion);
+	ts->dev_pm_suspend = false;
+	complete(&ts->dev_pm_suspend_completion);
 	NVT_LOG("pm resume");
 
 	return 0;
