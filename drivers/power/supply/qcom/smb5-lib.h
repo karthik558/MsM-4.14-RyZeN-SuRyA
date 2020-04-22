@@ -86,6 +86,9 @@ enum print_reason {
 #define MAIN_FCC_VOTER			"MAIN_FCC_VOTER"
 #define DCIN_AICL_VOTER			"DCIN_AICL_VOTER"
 #define OVERHEAT_LIMIT_VOTER		"OVERHEAT_LIMIT_VOTER"
+#ifdef CONFIG_PD_VERIFY
+#define PD_VERIFED_VOTER		"PD_VERIFED_VOTER"
+#endif
 
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
@@ -107,6 +110,10 @@ enum print_reason {
 #define DCIN_ICL_MIN_UA			100000
 #define DCIN_ICL_MAX_UA			1500000
 #define DCIN_ICL_STEP_UA		100000
+#ifdef CONFIG_PD_VERIFY
+#define PD_UNVERIFED_CURRENT		3000000
+#define PD_VERIFED_CURRENT			6000000
+#endif
 
 #define ROLE_REVERSAL_DELAY_MS		2000
 
@@ -488,6 +495,9 @@ struct smb_charger {
 	int			voltage_min_uv;
 	int			voltage_max_uv;
 	int			pd_active;
+#ifdef CONFIG_PD_VERIFY
+int			pd_verifed;
+#endif
 	bool			pd_hard_reset;
 	bool			pr_lock_in_progress;
 	bool			pr_swap_in_progress;

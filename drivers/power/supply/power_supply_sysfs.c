@@ -364,6 +364,9 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(typec_src_rp),
 	POWER_SUPPLY_ATTR(pd_allowed),
 	POWER_SUPPLY_ATTR(pd_active),
+	#ifdef CONFIG_PD_VERIFY
+	POWER_SUPPLY_ATTR(pd_authentication),
+	#endif
 	POWER_SUPPLY_ATTR(pd_in_hard_reset),
 	POWER_SUPPLY_ATTR(pd_current_max),
 	POWER_SUPPLY_ATTR(pd_usb_suspend_supported),

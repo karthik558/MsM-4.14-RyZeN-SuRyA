@@ -133,4 +133,10 @@ config SMB1398_CHARGER
 	      wireless charger receiver and provide the input for downstream
 	      chargers.
 
+config PD_VERIFY
+	bool "usbpd digest verify"
+	default n
+	help
+		Say Y to include support for usbpd digest verify.
+
 endmenu

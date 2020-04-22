@@ -4416,6 +4416,12 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 		vote(chg->usb_icl_votable, PD_VOTER, true, USBIN_100MA);
 		vote(chg->usb_icl_votable, USB_PSY_VOTER, false, 0);
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
+#ifdef CONFIG_PD_VERIFY
+		/*set the icl to PD_UNVERIFED_CURRENT when pd is not verifed*/
+		rc = vote(chg->usb_icl_votable, PD_VERIFED_VOTER, true, PD_UNVERIFED_CURRENT);
+		if (rc < 0)
+			smblib_err(chg, "Couldn't unvote PD_VERIFED_VOTER, rc=%d\n", rc);
+#endif
 
 		/*
 		 * For PPS, Charge Pump is preferred over parallel charger if
@@ -5778,6 +5784,9 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->pl_enable_votable_indirect, USBIN_I_VOTER, false, 0);
 	vote(chg->pl_enable_votable_indirect, USBIN_V_VOTER, false, 0);
 	vote(chg->awake_votable, PL_DELAY_VOTER, false, 0);
+#ifdef CONFIG_PD_VERIFY
+	vote(chg->usb_icl_votable, PD_VERIFED_VOTER, false, 0);
+#endif
 
 	/* Remove SW thermal regulation WA votes */
 	vote(chg->usb_icl_votable, SW_THERM_REGULATION_VOTER, false, 0);
@@ -5853,6 +5862,11 @@ static void typec_src_removal(struct smb_charger *chg)
 		smblib_notify_device_mode(chg, false);
 
 	chg->typec_legacy = false;
+#ifdef CONFIG_PD_VERIFY
+	pr_err("%s:", __func__);
+	if (chg->pd_verifed)
+		chg->pd_verifed = false;
+#endif
 
 	del_timer_sync(&chg->apsd_timer);
 	chg->apsd_ext_timeout = false;
