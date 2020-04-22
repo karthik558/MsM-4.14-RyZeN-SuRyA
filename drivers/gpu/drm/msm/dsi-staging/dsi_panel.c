@@ -1721,9 +1721,13 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-off-command",
 	"qcom,mdss-dsi-post-off-command",
 	"qcom,mdss-dsi-cabc-on-command",
+	"qcom,mdss-dsi-cabc-still-on-command",
+	"qcom,mdss-dsi-cabc-movie-on-command",
 	"qcom,mdss-dsi-cabc-off-command",
-	"qcom,mdss-dsi-cabc_movie-on-command",
-	"qcom,mdss-dsi-cabc_still-on-command",
+	"qcom,mdss-dsi-hbm1-on-command",
+	"qcom,mdss-dsi-hbm2-on-command",
+	"qcom,mdss-dsi-hbm3-on-command",
+	"qcom,mdss-dsi-hbm-off-command",
 	"qcom,mdss-dsi-pre-res-switch",
 	"qcom,mdss-dsi-res-switch",
 	"qcom,mdss-dsi-post-res-switch",
@@ -1751,9 +1755,13 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-off-command-state",
 	"qcom,mdss-dsi-post-off-command-state",
 	"qcom,mdss-dsi-cabc-on-command-state",
+	"qcom,mdss-dsi-cabc-still-on-command-state",
+	"qcom,mdss-dsi-cabc-movie-on-command-state",
 	"qcom,mdss-dsi-cabc-off-command-state",
-	"qcom,mdss-dsi-cabc_movie-on-command-state",
-	"qcom,mdss-dsi-cabc_still-on-command-state",
+	"qcom,mdss-dsi-hbm1-on-command-state",
+	"qcom,mdss-dsi-hbm2-on-command-state",
+	"qcom,mdss-dsi-hbm3-on-command-state",
+	"qcom,mdss-dsi-hbm-off-command-state",
 	"qcom,mdss-dsi-pre-res-switch-state",
 	"qcom,mdss-dsi-res-switch-state",
 	"qcom,mdss-dsi-post-res-switch-state",
@@ -3265,7 +3273,6 @@ static int msm_lcd_name_create_sysfs(void)
 	}
 	return 0;
 }
-
 
 struct dsi_panel *dsi_panel_get(struct device *parent,
 				struct device_node *of_node,
