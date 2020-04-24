@@ -804,6 +804,7 @@
 };
 
 &dsi_nt36672c_huaxing_fhd_video {
+	qcom,esd-err-int-gpio = <&tlmm 4 0>;
 	qcom,mdss-dsi-t-clk-post = <0x03>;
 	qcom,mdss-dsi-t-clk-pre = <0x28>;
 	qcom,mdss-dsi-display-timings {
@@ -817,6 +818,7 @@
 };
 
 &dsi_nt36672c_tianma_fhd_video {
+	qcom,esd-err-int-gpio = <&tlmm 4 0>;
 	qcom,mdss-dsi-t-clk-post = <0x16>;
 	qcom,mdss-dsi-t-clk-pre = <0x32>;
 	qcom,mdss-dsi-display-timings {
