@@ -161,7 +161,7 @@ static ssize_t lct_proc_tp_palm_read(struct file *file, char __user *buf,
 	cnt = simple_read_from_buffer(buf, size, ppos, page, cnt);
 	if (*ppos != cnt)
 		*ppos = cnt;
-	TP_LOGW("Touchpad status : %s", page);
+	TP_LOGW("Touchpad Palm status : %s", page);
 
 	kfree(page);
 	return cnt;
@@ -188,25 +188,25 @@ static ssize_t lct_proc_tp_palm_write(struct file *file,
 	if (input > 0) {
 		if (lct_tp_p->enable_tp_palm_flag)
 			goto exit;
-		TP_LOGW("Enbale Touchpad ...\n");
+		TP_LOGW("Enbale Touchpad Palm...\n");
 		ret = lct_tp_p->pfun(false);
 		if (ret) {
-			TP_LOGW("Enable Touchpad Failed! ret=%d\n", ret);
+			TP_LOGW("Enable Touchpad Palm Failed! ret=%d\n", ret);
 			goto exit;
 		}
 		lct_tp_p->enable_tp_palm_flag = true;
 	} else {
 		if (!lct_tp_p->enable_tp_palm_flag)
 			goto exit;
-		TP_LOGW("Disable Touchpad ...\n");
+		TP_LOGW("Disable Touchpad Palm...\n");
 		ret = lct_tp_p->pfun(true);
 		if (ret) {
-			TP_LOGW("Disable Touchpad Failed! ret=%d\n", ret);
+			TP_LOGW("Disable Touchpad Palm Failed! ret=%d\n", ret);
 			goto exit;
 		}
 		lct_tp_p->enable_tp_palm_flag = false;
 	}
-	TP_LOGW("Set Touchpad successfully!\n");
+	TP_LOGW("Set Touchpad Palm successfully!\n");
 
 exit:
 	kfree(page);
