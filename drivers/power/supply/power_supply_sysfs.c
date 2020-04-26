@@ -310,6 +310,8 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(charge_enabled),
 	POWER_SUPPLY_ATTR(set_ship_mode),
 	POWER_SUPPLY_ATTR(real_type),
+	POWER_SUPPLY_ATTR(hvdcp3_type),
+	POWER_SUPPLY_ATTR(quick_charge_type),
 	POWER_SUPPLY_ATTR(charge_now_raw),
 	POWER_SUPPLY_ATTR(charge_now_error),
 	POWER_SUPPLY_ATTR(capacity_raw),
@@ -441,6 +443,32 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(cp_ilim),
 	POWER_SUPPLY_ATTR(irq_status),
 	POWER_SUPPLY_ATTR(parallel_output_mode),
+	/* Bq charge pump properties */
+	POWER_SUPPLY_ATTR(ti_battery_present),
+	POWER_SUPPLY_ATTR(ti_vbus_present),
+	POWER_SUPPLY_ATTR(ti_battery_voltage),
+	POWER_SUPPLY_ATTR(ti_battery_current),
+	POWER_SUPPLY_ATTR(ti_battery_temperature),
+	POWER_SUPPLY_ATTR(ti_bus_voltage),
+	POWER_SUPPLY_ATTR(ti_bus_current),
+	POWER_SUPPLY_ATTR(ti_bus_temperature),
+	POWER_SUPPLY_ATTR(ti_die_temperature),
+	POWER_SUPPLY_ATTR(ti_alarm_status),
+	POWER_SUPPLY_ATTR(ti_fault_status),
+	POWER_SUPPLY_ATTR(ti_reg_status),
+	POWER_SUPPLY_ATTR(ti_set_bus_protection_for_qc3),
+      /*POWER_SUPPLY_ATTR(fastcharge_mode),
+	POWER_SUPPLY_ATTR(dp_dm_bq),
+	POWER_SUPPLY_ATTR(pd_authentication),
+	POWER_SUPPLY_ATTR(termination_current),
+	POWER_SUPPLY_ATTR(ffc_termination_current),
+	POWER_SUPPLY_ATTR(sys_termination_current),
+	POWER_SUPPLY_ATTR(ffc_sys_termination_current),
+	POWER_SUPPLY_ATTR(vbatt_full_vol),
+	POWER_SUPPLY_ATTR(fcc_vbatt_full_vol),
+	POWER_SUPPLY_ATTR(ki_coeff_current),
+	POWER_SUPPLY_ATTR(recharge_vbat),
+	POWER_SUPPLY_ATTR(step_vfloat_index),*/
 #ifdef CONFIG_BATT_VERIFY_BY_DS28E16
 	/* battery verify properties */
 	POWER_SUPPLY_ATTR(romid),
@@ -458,6 +486,14 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(verify_model_name),
 	POWER_SUPPLY_ATTR(chip_ok),
 #endif
+	/* DIV 2 properties */
+      /*POWER_SUPPLY_ATTR(div_2_mode),
+	POWER_SUPPLY_ATTR(reverse_chg_mode),
+	POWER_SUPPLY_ATTR(reverse_chg_state),
+	POWER_SUPPLY_ATTR(reverse_gpio_state),
+	POWER_SUPPLY_ATTR(reset_div_2_mode),
+	POWER_SUPPLY_ATTR(aicl_enable),
+	POWER_SUPPLY_ATTR(otg_state),*/
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_ATTR(charge_counter_ext),
 	/* Properties of type `const char *' */

@@ -71,6 +71,19 @@ struct pd_phy_params {
 	u8		frame_filter_val;
 };
 
+
+struct usbpd_pdo {
+	bool pps;
+	int type;
+	int max_volt_mv;
+	int min_volt_mv;
+	int curr_ma;
+	int pos;
+};
+
+int usbpd_get_pps_status(struct usbpd *pd, u32 *status);
+int usbpd_fetch_pdo(struct usbpd *pd, struct usbpd_pdo *pdos);
+
 #if IS_ENABLED(CONFIG_QPNP_USB_PDPHY)
 int pd_phy_open(struct pd_phy_params *params);
 int pd_phy_signal(enum pd_sig_type sig);

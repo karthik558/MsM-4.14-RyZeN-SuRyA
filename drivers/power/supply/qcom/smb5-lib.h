@@ -23,6 +23,7 @@
 #include <linux/extcon.h>
 #include <linux/usb/class-dual-role.h>
 #include "storm-watch.h"
+#include <linux/usb/usbpd.h>
 #include "battery.h"
 
 enum print_reason {
@@ -614,6 +615,9 @@ int			pd_verifed;
 	u32			irq_status;
 
 	/* wireless */
+
+	struct usbpd		*pd;
+
 	int			dcin_uv_count;
 	ktime_t			dcin_uv_last_time;
 	int			last_wls_vout;
@@ -825,6 +829,7 @@ int smblib_get_irq_status(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_qc3_main_icl_offset(struct smb_charger *chg, int *offset_ua);
 
+struct usbpd *smb_get_usbpd(void);
 int smblib_init(struct smb_charger *chg);
 int smblib_deinit(struct smb_charger *chg);
 int smblib_get_prop_battery_charging_enabled(struct smb_charger *chg,

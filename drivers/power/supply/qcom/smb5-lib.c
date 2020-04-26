@@ -21,6 +21,7 @@
 #include <linux/pmic-voter.h>
 #include <linux/of_batterydata.h>
 #include <linux/ktime.h>
+#include <linux/usb/usbpd.h>
 #include "smb5-lib.h"
 #include "smb5-reg.h"
 #include "schgm-flash.h"
@@ -4399,6 +4400,8 @@ int smblib_set_prop_pd_voltage_max(struct smb_charger *chg,
 	return rc;
 }
 
+extern struct usbpd *pd_phy_get_usbpd(void);
+
 int smblib_set_prop_pd_active(struct smb_charger *chg,
 				const union power_supply_propval *val)
 {
@@ -4411,6 +4414,17 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 
 	smblib_apsd_enable(chg, !chg->pd_active);
 
+	if (!chg->pd) {
+		chg->pd = devm_usbpd_get_by_phandle(chg->dev,
+				"qcom,usbpd-phandle");
+		pr_err("1:chg->pd=%x\n", chg->pd);
+		if (IS_ERR_OR_NULL(chg->pd))
+			pr_err("Failed to get pd handle %ld\n",
+					PTR_ERR(chg->pd));
+		
+	}
+
+	pr_err("2:chg->pd=%x\n", chg->pd);
 	update_sw_icl_max(chg, apsd->pst);
 
 	if (chg->pd_active) {
