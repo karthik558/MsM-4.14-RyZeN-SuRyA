@@ -295,8 +295,8 @@ static int drv2624_get_diag_result(struct drv2624_data *pDRV2624,
 		if (nResult < 0)
 			goto end;
 		pDRV2624->mDiagResult.mnDiagK = nResult;
-		Re = 478.43 * (pDRV2624->mDiagResult.mnDiagZ /
-			       (4 * pDRV2624->mDiagResult.mnDiagK + 719));
+		Re = 47843 * pDRV2624->mDiagResult.mnDiagZ /
+			       (4 * pDRV2624->mDiagResult.mnDiagK + 719) / 100;
 		dev_dbg(pDRV2624->dev,
 			"%s: ZResult=0x%x, CurrentK=0x%x, Re = %d ohm\n",
 			__func__, pDRV2624->mDiagResult.mnDiagZ,
@@ -509,6 +509,35 @@ static void vibrator_work_routine(struct work_struct *work)
 err:	mutex_unlock(&pDRV2624->lock);
 }
 
+static int dev_update_f0(struct drv2624_data *pDRV2624)
+{
+	int nResult, msb, lsb;
+
+	dev_err(pDRV2624->dev, "%s: enter!\n", __func__);
+	msb = drv2624_reg_read(pDRV2624, DRV2624_REG_RUNNING_PERIOD_H);
+	if (msb < 0)
+		goto end;
+	lsb = drv2624_reg_read(pDRV2624, DRV2624_REG_RUNNING_PERIOD_L);
+	if (lsb < 0)
+		goto end;
+
+	nResult =
+	    drv2624_reg_write(pDRV2624, DRV2624_REG_OL_PERIOD_H, msb);
+	if (nResult < 0)
+		goto end;
+	nResult =
+	    drv2624_reg_write(pDRV2624, DRV2624_REG_OL_PERIOD_L, lsb);
+	if (nResult < 0)
+		goto end;
+
+	dev_err(pDRV2624->dev, "%s: F0 is updated MSB:%d LSB:%d\n",
+		__func__, msb, lsb);
+	return 0;
+end:
+	dev_err(pDRV2624->dev, "%s: Failed to update f0 !\n", __func__);
+	return nResult;
+}
+
 static int dev_auto_calibrate(struct drv2624_data *pDRV2624)
 {
 	int nResult = 0;
@@ -570,6 +599,113 @@ end:	dev_dbg(pDRV2624->dev, "%s: fetched calib values = %d\n", __func__,
 	return nResult;
 }
 
+#if 0
+//char *drv2624_w_path = "/mnt/vendor/persist/Drv2624Date.ini";
+//char *drv2624_r_path = "/vendor/firmware/Drv2624Date.ini";
+char *drv2624_path = "/vendor/firmware/Drv2624Date.ini";
+//char *drv2624_r_path = "/vendor/firmware/audio/Drv2624Date.ini";
+
+//int vibrator_save_cali_data(char *path, unsigned char val)
+int vibrator_save_cali_data(char *path, struct drv2624_data *pDRV2624)
+{
+	unsigned char buf[4] = { 0 };
+
+	struct file *fp = NULL;
+	mm_segment_t fs;
+	loff_t pos;
+
+	buf[0] = pDRV2624->mnIntStatus;
+	buf[1] = pDRV2624->mAutoCalResult.mnCalComp;
+	buf[2] = pDRV2624->mAutoCalResult.mnCalBemf;
+	buf[3] = pDRV2624->mAutoCalResult.mnCalGain;
+
+	pr_info("drv2624 %s 0x%x 0x%x 0x%x 0x%x\n", *path, buf[0], buf[1],
+	       buf[2], buf[3]);
+
+	if (NULL == fp) {
+		fp = filp_open(path, O_RDWR | O_CREAT | O_TRUNC, 0644);
+	}
+	if (IS_ERR(fp)) {
+		pr_err("drv2624 write file error\n");
+		return -EIO;
+	}
+
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+	pos = 0;
+	vfs_write(fp, buf, sizeof(buf), &pos);
+	filp_close(fp, NULL);
+	set_fs(fs);
+
+	return 0;
+}
+
+//int vibrator_read_cali_data(char *path)
+int vibrator_read_cali_data(char *path, struct drv2624_data *pDRV2624)
+{
+	unsigned char buf[4] = { 0 };
+
+	struct file *fp = NULL;
+	mm_segment_t fs;
+	loff_t pos;
+
+	pr_info("%s\n", *path);
+	//pDRV2624->mnIntStatus = buf[0];
+
+	if (NULL == fp) {
+		fp = filp_open(path, O_RDONLY, 0);
+	}
+	if (IS_ERR(fp)) {
+		pr_err("drv2624 read file error\n");
+		return -EIO;
+	}
+
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+	pos = 0;
+	vfs_read(fp, buf, sizeof(buf), &pos);
+	pr_info("drv2624 read: 0x%x 0x%x 0x%x 0x%x\n", buf[0], buf[1], buf[2],
+	       buf[3]);
+	filp_close(fp, NULL);
+	set_fs(fs);
+
+	//if(buf[0] != 0){
+	pDRV2624->mnIntStatus = buf[0];
+	pDRV2624->mAutoCalResult.mnCalComp = buf[1];
+	pDRV2624->mAutoCalResult.mnCalBemf = buf[2];
+	pDRV2624->mAutoCalResult.mnCalGain = buf[3];
+	//}
+
+	return 0;
+}
+
+static void drv2624_init_write_cali_data(struct work_struct *work)
+{
+	//struct drv2624_data *pDRV2624 = container_of(work, struct drv2624_data, haptics_playback_work);
+
+	vibrator_read_cali_data(drv2624_path, g_DRV2624data);
+	//mdelay(2);
+	//vibrator_read_cali_data(drv2624_r_path, g_DRV2624data);
+
+	if (g_DRV2624data->mnIntStatus != 0x08) {
+		dev_dbg(g_DRV2624data->dev, "%s\n", __func__);
+		queue_delayed_work(g_DRV2624data->cali_write_workqueue,
+				   &g_DRV2624data->cali_write_work,
+				   msecs_to_jiffies(2 * 1000));
+	} else {
+		drv2624_calibration_fetch(g_DRV2624data);
+		dev_err(g_DRV2624data->dev,
+			"%s: Cal_Result: 0x%x, CalComp: 0x%x, CalBemf: 0x%x, CalGain: 0x%x\n",
+			__func__, g_DRV2624data->mnIntStatus,
+			g_DRV2624data->mAutoCalResult.mnCalComp,
+			g_DRV2624data->mAutoCalResult.mnCalBemf,
+			g_DRV2624data->mAutoCalResult.mnCalGain);
+		mdelay(5);
+		cancel_delayed_work_sync(&g_DRV2624data->cali_write_work);
+	}
+}
+#endif
+
 static int drv2624_get_calibration_result(struct drv2624_data *pDRV2624)
 {
 	int nResult, cal_bemf, cal_comp, cal_gain;
@@ -592,9 +728,57 @@ static int drv2624_get_calibration_result(struct drv2624_data *pDRV2624)
 	if (cal_gain < 0)
 		goto end;
 	pDRV2624->mAutoCalResult.mnCalGain = cal_gain;
+	//update f0 into 0x2e 0x2f
+	dev_update_f0(pDRV2624);
 end:	dev_dbg(pDRV2624->dev, "%s: nResult = %d\n", __func__, nResult);
 	return nResult;
 }
+
+#ifdef DRV_BOOT_CALIB
+static void drv_boot_calib_work_routine(struct work_struct *work)
+{
+	int nResult = 0;
+#ifdef DELAY_BOOT_CALIB
+	struct drv2624_data *pDRV2624 =
+	    container_of(work, struct drv2624_data, deblay_boot_calib_work.work);
+#else
+	struct drv2624_data *pDRV2624 =
+	    container_of(work, struct drv2624_data, boot_calib_work);
+#endif
+	//do auto calibration
+	nResult = dev_auto_calibrate(pDRV2624);
+	if (nResult<0) {
+		dev_err(pDRV2624->dev, "%s: Boot calibration is failed, nResult = %d\n",
+			__func__, nResult);
+		return;
+	}
+	nResult = drv2624_get_calibration_result(pDRV2624);
+	if (nResult<0) {
+		dev_err(pDRV2624->dev,
+			"%s: Failed to update calibration parameters, nResult = %d\n",
+			__func__, nResult);
+	}
+}
+
+static void drv_schedule_boot_calib(struct drv2624_data *pDRV2624)
+{
+#ifdef DELAY_BOOT_CALIB
+	INIT_DELAYED_WORK(&pDRV2624->deblay_boot_calib_work,
+			  drv_boot_calib_work_routine);
+	pDRV2624->boot_calib_workqueue =
+	    create_workqueue("drv2624_probe_cali_data");
+	if (pDRV2624->boot_calib_workqueue == NULL)
+		dev_err(pDRV2624->dev,
+			"can't create pDRV2624 boot_calib_workqueue\n");
+
+	queue_delayed_work(pDRV2624->boot_calib_workqueue,
+			   &pDRV2624->deblay_boot_calib_work,
+			   msecs_to_jiffies(BOOT_CALIB_TIMER));
+#else
+	schedule_work(&pDRV2624->boot_calib_work);
+#endif
+}
+#endif
 
 /*show calibrtion*/
 static ssize_t
@@ -631,6 +815,8 @@ static ssize_t drv2624_store(struct device *dev, struct device_attribute *attr,
 	if ((buf[0] == 'C') && (buf[1] == 'A') &&
 	    (buf[2] == 'L') && (buf[3] == 'I') && (buf[4] == 'B')) {
 		nResult = dev_auto_calibrate(tdev);
+		if (nResult >= 0)
+			nResult = drv2624_get_calibration_result(tdev);
 	} else if ((buf[0] == 'D') && (buf[1] == 'I')
 		   && (buf[2] == 'A') && (buf[3] == 'G')) {
 		nResult = dev_run_diagnostics(tdev);
@@ -841,6 +1027,7 @@ static int dev_run_diagnostics(struct drv2624_data *pDRV2624)
 		goto end;
 	dev_dbg(pDRV2624->dev, "%s: Diag start\n", __func__);
 	pDRV2624->mnVibratorPlaying = YES;
+	msleep(2000);
 	value = drv2624_reg_read(pDRV2624, DRV2624_REG_STATUS);
 	if (value < 0) {
 		return value;
@@ -1095,7 +1282,7 @@ static void drv2624_load_rtp_1(const struct firmware *fw, void *context)
 		size = fw->size;
 				if (rtp_data == NULL) {
 			rtp_data = kmalloc(fw->size, GFP_KERNEL);
-			dev_err(pDRV2624->dev, "%s, init rtp_data = %x\n", __func__, rtp_data);
+			dev_err(pDRV2624->dev, "%s, init rtp_data = %p\n", __func__, rtp_data);
 			if (rtp_data == NULL) {
 				dev_err(pDRV2624->dev,
 					"%s, %u Error allocating memory!!\n", __func__,
@@ -1519,6 +1706,26 @@ static int drv2624_haptics_upload_effect(struct input_dev *dev,
 	return nResult;
 }
 
+static void config_effect_playing(struct drv2624_data *pDRV2624)
+{
+
+	struct drv2624_constant_playinfo *play = &pDRV2624->play;
+	int effectID = play->effect_id;
+
+	//square waves
+	dev_info(pDRV2624->dev, "%s effectID:%d\n", __func__, effectID);
+	if (effectID == 6 || effectID == 10) {
+		drv2624_set_bits(pDRV2624, DRV2624_REG_LRA_SHAPE,
+			DRV2624_REG_LRA_SHAPE_MASK,
+			DRV2624_REG_LRA_SHAPE_SQUARE);
+		dev_info(pDRV2624->dev, "%s switched to square wave.\n",	__func__);
+	} else {
+		drv2624_set_bits(pDRV2624, DRV2624_REG_LRA_SHAPE,
+			DRV2624_REG_LRA_SHAPE_MASK,
+			DRV2624_REG_LRA_SHAPE_SINE);
+		dev_info(pDRV2624->dev, "%s switched to sine wave.\n", __func__);
+	}
+}
 static void haptics_playback_work_routine(struct work_struct *work)
 {
 	int nResult = 0;
@@ -1531,30 +1738,30 @@ static void haptics_playback_work_routine(struct work_struct *work)
 		dev_err(pDRV2624->dev, "%s: stop failed!\n", __func__);
 		goto end;
 	}
-	dev_err(pDRV2624->dev, "%s:pDRV2624->type = %d\n", __func__,
-		pDRV2624->mnEffectType);
-	switch (pDRV2624->mnEffectType) {
-	case FF_PERIODIC:
-		dev_err(pDRV2624->dev, "%s:FF_PERIODIC enter\n", __func__);
-		if (pDRV2624->mnWorkMode == DRV2624_RAM_MODE) {
-			nResult = drv2624_playEffect(pDRV2624);
-			if ((nResult >= 0) && pDRV2624->mbIRQUsed) {
-				drv2624_enableIRQ(pDRV2624, NO);
-				break;
-			}
-		} else if (pDRV2624->mnWorkMode == DRV2624_NEW_RTP_MODE) {
-			pDRV2624->play.length = 0;
-			pDRV2624->mnWorkMode = DRV2624_RTP_MODE;
-			nResult =
-			    drv2624_change_mode(pDRV2624, DRV2624_RTP_MODE);
-			dev_err(pDRV2624->dev, "%s:FF_PERIODIC mode = 0x%x\n",
-				__func__, pDRV2624->mnWorkMode);
-			//logtime vibration unlock to allow stopping
-			mutex_unlock(&pDRV2624->lock);
-			get_command_str(pDRV2624);
-			goto exit;
+	dev_err(pDRV2624->dev, "%s:pDRV2624->mnWorkMode = %d\n", __func__,
+		pDRV2624->mnWorkMode);
+	//config special effect playing request
+	config_effect_playing(pDRV2624);
+	switch (pDRV2624->mnWorkMode) {
+	case DRV2624_RAM_MODE:
+		dev_err(pDRV2624->dev, "%s:DRV2624_RAM_MODE enter\n", __func__);
+		nResult = drv2624_playEffect(pDRV2624);
+		if ((nResult >= 0) && pDRV2624->mbIRQUsed) {
+			drv2624_enableIRQ(pDRV2624, NO);
 		}
-	case FF_CONSTANT:
+		break;
+	case DRV2624_NEW_RTP_MODE:
+		pDRV2624->play.length = 0;
+		pDRV2624->mnWorkMode = DRV2624_RTP_MODE;
+		nResult =
+			drv2624_change_mode(pDRV2624, DRV2624_RTP_MODE);
+		dev_err(pDRV2624->dev, "%s:FF_PERIODIC mode = 0x%x\n",
+			__func__, pDRV2624->mnWorkMode);
+		//logtime vibration unlock to allow stopping
+		mutex_unlock(&pDRV2624->lock);
+		get_command_str(pDRV2624);
+		goto exit;
+	case DRV2624_RTP_MODE:
 		dev_err(pDRV2624->dev, "%s enter effect.length(%d) \n",
 			__func__, pDRV2624->play.length);
 		if (pDRV2624->play.length <= 0) {
@@ -1579,8 +1786,8 @@ static void haptics_playback_work_routine(struct work_struct *work)
 			nResult = drv2624_enableIRQ(pDRV2624, YES);
 		break;
 	default:
-		dev_err(pDRV2624->dev, "Unsupported effect type: %d\n",
-			pDRV2624->mnEffectType);
+		dev_err(pDRV2624->dev, "Unsupported work mode: %d\n",
+			pDRV2624->mnWorkMode);
 		break;
 	}
 	if (pDRV2624->play.length != 0) {
@@ -1597,8 +1804,14 @@ static int drv2624_haptics_playback(struct input_dev *dev, int effect_id,
 {
 	struct drv2624_data *pDRV2624 = input_get_drvdata(dev);
 	int nResult = 0;
+	dev_err(pDRV2624->dev, "%s: effect_id(%d) val(%d)\n",
+		__func__, effect_id, val);
 	dev_err(pDRV2624->dev, "%s: mnEffectType(%d) WorkMode(%d)\n",
 		__func__, pDRV2624->mnEffectType, pDRV2624->mnWorkMode);
+	if (val <= 0) {
+		dev_err(pDRV2624->dev, "%s: return as value <= 0 \n", __func__);
+		return 0;
+	}
 	if ((pDRV2624->mnEffectType == FF_CONSTANT)
 	    && (pDRV2624->mnWorkMode == DRV2624_RTP_MODE)) {
 		pDRV2624->mnWorkMode = DRV2624_RTP_MODE;
@@ -1713,6 +1926,10 @@ static int Haptics_init(struct drv2624_data *pDRV2624)
 		  upload_periodic_work_routine);
 	INIT_WORK(&pDRV2624->haptics_playback_work,
 		  haptics_playback_work_routine);
+#ifndef DELAY_BOOT_CALIB
+	INIT_WORK(&pDRV2624->boot_calib_work,
+		  drv_boot_calib_work_routine);
+#endif
 	//INIT_WORK(&pDRV2624->haptics_set_gain_work,
 	//         haptics_set_gain_work_routine);
 	mutex_init(&pDRV2624->lock);
@@ -1768,7 +1985,8 @@ static void drv2624_init(struct drv2624_data *pDRV2624)
 		unsigned char DriveTime =
 		    5 * (1000 - actuator.mnLRAFreq) / actuator.mnLRAFreq;
 		unsigned short openLoopPeriod =
-		    (unsigned short)(1000000000 / (24619 * actuator.mnLRAFreq));
+		    (unsigned short)((unsigned int)1000000000 /
+				     (24619 * actuator.mnLRAFreq));
 		if (actuator.mnLRAFreq < 125)
 			DriveTime |= (MINFREQ_SEL_45HZ << MINFREQ_SEL_SHIFT);
 		drv2624_set_bits(pDRV2624, DRV2624_REG_DRIVE_TIME,
@@ -1777,7 +1995,9 @@ static void drv2624_init(struct drv2624_data *pDRV2624)
 				 (openLoopPeriod & 0x0300) >> 8);
 		drv2624_reg_write(pDRV2624, DRV2624_REG_OL_PERIOD_L,
 				  (openLoopPeriod & 0x00ff));
-		drv2624_reg_write(pDRV2624, DRV2624_REG_LRA_SHAPE,0x01);
+		drv2624_set_bits(pDRV2624, DRV2624_REG_LRA_SHAPE,
+			DRV2624_REG_LRA_SHAPE_MASK,
+			DRV2624_REG_LRA_SHAPE_SINE);
 		dev_info(pDRV2624->dev, "%s, LRA = %d, DriveTime=0x%x, Shape:sine\n",
 			 __func__, actuator.mnLRAFreq, DriveTime);
 	}
@@ -1932,7 +2152,7 @@ static int drv2624_i2c_probe(struct i2c_client *client,
 	int nResult = 0;
 	struct drv2624_data *pDRV2624;
 	struct ff_device *ff;
-	dev_info(&client->dev, "%s enter\n", __func__);
+	dev_info(&client->dev, "%s enter, SW version:%s\n", __func__, DRV2624_SW_VERSION);
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "%s:I2C check failed\n", __func__);
 		return -ENODEV;
@@ -2074,7 +2294,7 @@ static int drv2624_i2c_probe(struct i2c_client *client,
 					  drv2624_firmware_load);
 	if (nResult != 0) {
 		dev_err(&client->dev,
-			"%s: %u: nResult = %d: %s request drv2624_firmware_laod!\n",
+			"%s: %u: nResult = %d: request drv2624_firmware_laod!\n",
 			__func__, __LINE__, nResult);
 	}
 	/** add **/
@@ -2100,6 +2320,9 @@ static int drv2624_i2c_probe(struct i2c_client *client,
 	queue_delayed_work(pDRV2624->cali_write_workqueue,
 			   &pDRV2624->cali_write_work,
 			   msecs_to_jiffies(25 * 1000));
+#endif
+#ifdef DRV_BOOT_CALIB
+	drv_schedule_boot_calib(pDRV2624);
 #endif
 
 	dev_info(pDRV2624->dev, "drv2624 probe succeeded\n");
@@ -2135,6 +2358,10 @@ static int drv2624_i2c_remove(struct i2c_client *client)
 	input_ff_destroy(pDRV2624->input_dev);
 	mutex_destroy(&pDRV2624->lock);
 	mutex_destroy(&pDRV2624->dev_lock);
+#ifdef DELAY_BOOT_CALIB
+	flush_workqueue(pDRV2624->boot_calib_workqueue);
+	destroy_workqueue(pDRV2624->boot_calib_workqueue);
+#endif
 	return 0;
 }
 static const struct i2c_device_id drv2624_i2c_id[] = { {"drv2624", 0}, {}

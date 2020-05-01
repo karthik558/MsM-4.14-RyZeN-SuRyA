@@ -14,6 +14,10 @@
 ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ** GNU General Public License for more details.
 **
+** You should have received a copy of the GNU General Public License
+** along with this program; if not, write to the Free Software
+** Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+**
 ** File:
 **     drv2624.h
 **
@@ -44,6 +48,7 @@
 #define	DRV2624_REG_ID				0x00
 #define DRV2624_ID_MASK                         0xf0
 #define	DRV2624_ID				(0x02&DRV2624_ID_MASK)
+#define	DRV2624_SW_VERSION		"1.0.2020.4.9" //specific some effectID as square wave
 
 #define	DRV2624_REG_STATUS			0x01
 #define	DIAG_MASK				0x80
@@ -120,6 +125,8 @@
 
 #define	DRV2624_REG_OL_PERIOD_H			0x2e
 #define	DRV2624_REG_OL_PERIOD_L			0x2f
+#define	DRV2624_REG_RUNNING_PERIOD_H		0x05
+#define	DRV2624_REG_RUNNING_PERIOD_L		0x06
 #define	DRV2624_REG_DIAG_K			0x30
 
 #define	GO_BIT_POLL_INTERVAL		15
@@ -131,6 +138,9 @@
 #define	DRV2624_REG_RAM_DATA		0xff
 
 #define	DRV2624_REG_LRA_SHAPE 		0x2c
+#define	DRV2624_REG_LRA_SHAPE_MASK 	0x01
+#define	DRV2624_REG_LRA_SHAPE_SINE 	0x01
+#define	DRV2624_REG_LRA_SHAPE_SQUARE 	0x00
 
 /* Commands */
 #define	HAPTIC_CMDID_PLAY_SINGLE_EFFECT		0x01
@@ -190,6 +200,10 @@
 #define AUTO_CAL_TIME_500MS           0x01
 #define AUTO_CAL_TIME_1000MS          0x10
 #define AUTO_CAL_TIME_AUTO_TRIGGER    0x11
+
+/* boot calibration build config*/
+#define DRV_BOOT_CALIB
+
 typedef enum { DRV2624_RTP_MODE =
 	    0x00, DRV2624_RAM_MODE, DRV2624_WAVE_SEQ_MODE =
 	    DRV2624_RAM_MODE, DRV2624_DIAG_MODE, DRV2624_CALIBRATION_MODE,
@@ -307,9 +321,19 @@ struct drv2624_data {
 #endif				/*  */
 	struct work_struct upload_periodic_work;
 	struct work_struct haptics_playback_work;
-	struct workqueue_struct *cali_write_workqueue;
-	struct delayed_work cali_write_work;
+	//struct workqueue_struct *cali_write_workqueue;
+	//struct delayed_work cali_write_work;
 	//struct work_struct haptics_set_gain_work;
+#ifdef DRV_BOOT_CALIB
+#define DELAY_BOOT_CALIB
+#ifdef DELAY_BOOT_CALIB
+#define BOOT_CALIB_TIMER (1*1000) //ms delayed after tas2624 init
+	struct workqueue_struct *boot_calib_workqueue;
+	struct delayed_work deblay_boot_calib_work;
+#else
+	struct work_struct boot_calib_work;
+#endif
+#endif
 };
 
 #define DRV2624_MAGIC_NUMBER	0x32363234	/* '2624' */

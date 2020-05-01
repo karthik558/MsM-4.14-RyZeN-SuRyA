@@ -7,7 +7,7 @@
 		reset-gpio = <&tlmm 63 0>;
 		irq-gpio = <&tlmm 26 0>;
 		vib_mode = <0>; /* 0: RAM mode 1:CONT mode*/
-		vib_f0_pre = < 2050 >;
+		vib_f0_pre = < 2080 >;
 		vib_f0_cali_percen = < 7 >;
 		vib_cont_drv_lev = < 100 >;
 		vib_cont_drv_lvl_ov = < 105 >;
@@ -53,7 +53,7 @@
 		ti,actuator = <1>; /* 0-ERM, 1-LRA */
 		ti,rated-voltage = <2500>; /*1800mv*/
 		ti,odclamp-voltage = <4000>; /*3000mv*/
-		ti,lra-frequency = <205>; /* DON'T Care if ERM */
+		ti,lra-frequency = <208>; /* DON'T Care if ERM */
 		wf_0 {
 			/*CLICK*/
 			qcom,effect-id = <0>;
