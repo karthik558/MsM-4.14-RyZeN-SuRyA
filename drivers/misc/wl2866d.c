@@ -18,7 +18,9 @@
 #define WL2866D_ID  0x64
 #define AW_I2C_RETRIES 2
 #define AW_I2C_RETRY_DELAY 2
-
+//#ifdef __XIAOMI_CAMERA__
+struct wl2866d_chip *camera_chip;
+//#endif
 static const struct  wl2866d_map  wl2866d_on_config[] = {
 	{0x03, 0x55},
 	{0x04, 0x55},
@@ -73,6 +75,201 @@ static int wl2866d_i2c_read(struct wl2866d_chip *chip,
 	return ret;
 }
 
+
+//#ifdef __XIAOMI_CAMERA__
+//bit0:DVDD1, bit1:DVDD2, bit2:AVDD1, bit3:AVDD2
+//{0x03, 0x55}, OUT_DVDD1
+//{0x04, 0x55}, OUT_DVDD2
+//{0x05, 0x80}, OUT_AVDD1
+//{0x06, 0x88}, OUT_AVDD2
+//{0x0E, 0x0F}, VOL_ENABLE
+//{0x0E, 0x00}, VOL_DISABLE
+int wl2866d_camera_power_up(uint16_t camera_id)
+{
+	int ret = -1;
+	unsigned char reg_val = 0;
+
+	if (0 == camera_id) {
+		//camera_id 0 --> imx682
+		pr_err("xyz wide:imx682 camera_id=[%d] power up\n", camera_id);
+		ret = wl2866d_i2c_write(camera_chip, wl2866d_on_config[OUT_DVDD2].reg, 0x55);//bit1
+		ret = wl2866d_i2c_write(camera_chip, wl2866d_on_config[OUT_AVDD2].reg, 0x88);//bit3
+		if (ret < 0) {
+			pr_err("xyz wl2866d set avdd2/dvdd2 failed\n");
+			return ret;
+		}
+
+		ret = wl2866d_i2c_read(camera_chip, wl2866d_on_config[VOL_ENABLE].reg, &reg_val);
+		if (ret < 0) {
+			pr_err("xyz wl2866d read enable failed\n");
+			return ret;
+		}
+
+		pr_err("xyz before set enable value = 0x%x\n", reg_val);
+		reg_val |= 0b1010;//bit1,bit3
+		pr_err("xyz after  set enable value = 0x%x\n", reg_val);
+
+		ret = wl2866d_i2c_write(camera_chip, wl2866d_on_config[VOL_ENABLE].reg, reg_val);//bit1
+		if (ret < 0) {
+			pr_err("xyz wl2866d set enable failed\n");
+			return ret;
+		}
+	}
+	else if ((1 == camera_id) || (2 == camera_id) || (4 == camera_id)) {
+		//camera_id 2 --> s5k3t2
+		//camera_id 1 --> ov02b1b/gc02m1b
+		//camera_id 4 --> hi259
+		if (2 == camera_id) {
+			pr_err("xyz front:s5k3t2 camera_id=[%d] power up\n", camera_id);
+		} else if(1 == camera_id) {
+			pr_err("xyz depth:ov02b1b/gc02m1b camera_id=[%d] power up\n", camera_id);
+		} else if(4 == camera_id) {
+			pr_err("xyz macro:hi259 camera_id=[%d] power up\n", camera_id);
+		}
+		ret = wl2866d_i2c_write(camera_chip, wl2866d_on_config[OUT_AVDD1].reg, 0x80);//bit2
+		if (ret < 0) {
+			pr_err("xyz wl2866d set avdd1 failed\n");
+			return ret;
+		}
+
+		ret = wl2866d_i2c_read(camera_chip, wl2866d_on_config[VOL_ENABLE].reg, &reg_val);
+		if (ret < 0) {
+			pr_err("xyz wl2866d read enable failed\n");
+			return ret;
+		}
+
+		pr_err("xyz before set enable value = 0x%x\n", reg_val);
+		reg_val |= 0b0100;//bit2
+		pr_err("xyz after  set enable value = 0x%x\n", reg_val);
+
+		ret = wl2866d_i2c_write(camera_chip, wl2866d_on_config[VOL_ENABLE].reg, reg_val);//bit1
+		if (ret < 0) {
+			pr_err("xyz wl2866d set enable failed\n");
+			return ret;
+		}
+	}
+	else if ((3 == camera_id) || (5 == camera_id)) {
+		//camera_id 5 --> hi847
+		//camera_id 3 --> hi1337
+		if (3 == camera_id) {
+			pr_err("xyz ulta wide:hi1337 camera_id=[%d] power up\n", camera_id);
+		} else if(5 == camera_id) {
+			pr_err("xyz tele:hi847 camera_id=[%d] power up\n", camera_id);
+		}
+		ret = wl2866d_i2c_write(camera_chip, wl2866d_on_config[OUT_DVDD1].reg, 0x55);//bit2
+		ret = wl2866d_i2c_write(camera_chip, wl2866d_on_config[OUT_AVDD1].reg, 0x80);//bit2
+		if (ret < 0) {
+			pr_err("xyz wl2866d set avdd1 failed\n");
+			return ret;
+		}
+
+		ret = wl2866d_i2c_read(camera_chip, wl2866d_on_config[VOL_ENABLE].reg, &reg_val);
+		if (ret < 0) {
+			pr_err("xyz wl2866d read enable failed\n");
+			return ret;
+		}
+
+		pr_err("xyz before set enable value = 0x%x\n", reg_val);
+		reg_val |= 0b0101;//bit0,bit2
+		pr_err("xyz after  set enable value = 0x%x\n", reg_val);
+
+		ret = wl2866d_i2c_write(camera_chip, wl2866d_on_config[VOL_ENABLE].reg, reg_val);//bit1
+		if (ret < 0) {
+			pr_err("xyz wl2866d set enable failed\n");
+			return ret;
+		}
+	} else {
+		pr_err("xyz wl2866d unknown camera!!!\n");
+	}
+
+	pr_err("xyz wl2866d result = %d\n", ret);
+	return ret;
+}
+EXPORT_SYMBOL(wl2866d_camera_power_up);
+
+int wl2866d_camera_power_down(uint16_t camera_id)
+{
+	int ret = -1;
+	unsigned char reg_val = 0;
+
+	if (0 == camera_id) {
+		//camera_id 0 --> imx682
+		pr_err("xyz wide:imx682 camera_id=[%d] power down\n", camera_id);
+		ret = wl2866d_i2c_read(camera_chip, wl2866d_on_config[VOL_ENABLE].reg, &reg_val);
+		if (ret < 0) {
+			pr_err("xyz wl2866d read enable failed\n");
+			return ret;
+		}
+
+		pr_err("xyz before set enable value = 0x%x\n", reg_val);
+		reg_val &= 0b0101;//bit1,bit3
+		pr_err("xyz after  set enable value = 0x%x\n", reg_val);
+
+		ret = wl2866d_i2c_write(camera_chip, wl2866d_on_config[VOL_ENABLE].reg, reg_val);//bit1
+		if (ret < 0) {
+			pr_err("xyz wl2866d set enable failed\n");
+			return ret;
+		}
+	}
+	else if ((1 == camera_id) || (2 == camera_id) || (4 == camera_id)) {
+		//camera_id 2 --> s5k3t2
+		//camera_id 1 --> ov02b1b/gc02m1b
+		//camera_id 4 --> hi259
+		if (2 == camera_id) {
+			pr_err("xyz front:s5k3t2 camera_id=[%d] power down\n", camera_id);
+		} else if(1 == camera_id) {
+			pr_err("xyz depth:ov02b1b/gc02m1b camera_id=[%d] power down\n", camera_id);
+		} else if(4 == camera_id) {
+			pr_err("xyz macro:hi259 camera_id=[%d] power down\n", camera_id);
+		}
+		ret = wl2866d_i2c_read(camera_chip, wl2866d_on_config[VOL_ENABLE].reg, &reg_val);
+		if (ret < 0) {
+			pr_err("xyz wl2866d read enable failed\n");
+			return ret;
+		}
+
+		pr_err("xyz before set enable value = 0x%x\n", reg_val);
+		reg_val &= 0b1011;//bit2
+		pr_err("xyz after  set enable value = 0x%x\n", reg_val);
+
+		ret = wl2866d_i2c_write(camera_chip, wl2866d_on_config[VOL_ENABLE].reg, reg_val);//bit1
+		if (ret < 0) {
+			pr_err("xyz wl2866d set enable failed\n");
+			return ret;
+		}
+	}
+	else if ((3 == camera_id) || (5 == camera_id)) {
+		//camera_id 5 --> hi847
+		//camera_id 3 --> hi1337
+		if (3 == camera_id) {
+			pr_err("xyz ulta wide:hi1337 camera_id=[%d] power up\n", camera_id);
+		} else if(5 == camera_id) {
+			pr_err("xyz tele:hi847 camera_id=[%d] power up\n", camera_id);
+		}
+		ret = wl2866d_i2c_read(camera_chip, wl2866d_on_config[VOL_ENABLE].reg, &reg_val);
+		if (ret < 0) {
+			pr_err("xyz wl2866d read enable failed\n");
+			return ret;
+		}
+
+		pr_err("xyz before set enable value = 0x%x\n", reg_val);
+		reg_val &= 0b1010;//bit0,bit2
+		pr_err("xyz after  set enable value = 0x%x\n", reg_val);
+
+		ret = wl2866d_i2c_write(camera_chip, wl2866d_on_config[VOL_ENABLE].reg, reg_val);//bit1
+		if (ret < 0) {
+			pr_err("xyz wl2866d set enable failed\n");
+			return ret;
+		}
+	} else {
+		pr_err("xyz wl2866d unknown camera!!!\n");
+	}
+
+	pr_err("xyz wl2866d result = %d\n", ret);
+	return ret;
+}
+EXPORT_SYMBOL(wl2866d_camera_power_down);
+//#endif
 
 static ssize_t wl2866d_vol_enable_show(struct device *dev,
 					struct device_attribute *attr,
@@ -517,7 +714,9 @@ static int wl2866d_probe(struct i2c_client *client,
 			 __func__);
 		goto err_sysfs;
 	}
-
+//#ifdef __XIAOMI_CAMERA__
+	camera_chip = chip;
+//#endif
 	pr_err("%s,successfully\n", __func__);
 	return 0;
 err_sysfs:
@@ -561,17 +760,20 @@ static int wl2866d_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct wl2866d_chip *chip = i2c_get_clientdata(client);
-	int ret = 0;
+//#ifdef __XIAOMI_CAMERA__
+	//int ret = 0;
 
 	pr_err("%s\n", __func__);
 	wl2866d_enable_power(chip);
 	gpio_direction_output(chip->en_gpio, 0);
+	/*
 	ret = wl2866d_i2c_write(chip, wl2866d_on_config[VOL_ENABLE].reg, wl2866d_on_config[VOL_ENABLE].value);
 	if (ret < 0) {
 		pr_err("wl2866d set enable failed\n");
 		return ret;
 	}
-
+	*/
+//#endif
 	return 0;
 }
 #endif

@@ -24,7 +24,10 @@
 #define VIN1_1P35_VOL_MAX   1350000
 #define VIN2_3P3_VOL_MIN    3296000
 #define VIN2_3P3_VOL_MAX    3296000
-
+//#ifdef __XIAOMI_CAMERA__
+int wl2866d_camera_power_up(uint16_t camera_id);
+int wl2866d_camera_power_down(uint16_t camera_id);
+//#endif
 struct wl2866d_chip {
 	struct device *dev;
 	struct i2c_client *client;
