@@ -165,4 +165,17 @@ static inline int usbpd_exit_mode(struct usbpd *pd, u16 svid, int mode,
 			SVDM_CMD_TYPE_INITIATOR, mode, vdo, vdo ? 1 : 0);
 }
 
+struct usbpd_pdo {
+	bool pps;
+	int type;
+	int max_volt_mv;
+	int min_volt_mv;
+	int curr_ma;
+	int pos;
+};
+
+int usbpd_select_pdo(struct usbpd *pd, int pdo, int uv, int ua);
+int usbpd_get_pps_status(struct usbpd *pd, u32 *status);
+int usbpd_fetch_pdo(struct usbpd *pd, struct usbpd_pdo *pdos);
+
 #endif /* __LINUX_USB_USBPD_H */

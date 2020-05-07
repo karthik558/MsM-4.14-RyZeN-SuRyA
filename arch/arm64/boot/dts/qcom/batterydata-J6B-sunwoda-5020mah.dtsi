@@ -12,8 +12,8 @@
  */
 
 qcom,j6b-sunwoda-5020mah {
-	qcom,max-voltage-uv = <4480000>;
-	qcom,fg-cc-cv-threshold-uv = <4450000>;
+	qcom,max-voltage-uv = <4450000>;
+	//qcom,fg-cc-cv-threshold-uv = <4450000>;
 	qcom,fastchg-current-ma = <6000>;
 	qcom,batt-id-kohm = <330>;
 	qcom,battery-beta = <4250>;
@@ -31,12 +31,8 @@ qcom,j6b-sunwoda-5020mah {
 	qcom,jeita-fv-ranges = <0   50   4450000
 				51  100  4450000
 				101 150  4450000
-				151 450  4480000
+				151 450  4450000
 				451 580  4100000>;
-
-	qcom,step-chg-ranges = <3001000  4250000  6000000
-				4250001  4450000  4900000
-				4450001  4480000  3900000>;
 
 	qcom,fcc1-temp-lut {
 		qcom,lut-col-legend = <0 10 25 40 50>;

@@ -364,10 +364,21 @@
 
 &pm6150_qg {
 	qcom,battery-data = <&mtp_batterydata>;
-	qcom,qg-iterm-ma = <100>;
+	qcom,qg-iterm-ma = <350>;
 	qcom,hold-soc-while-full;
 	qcom,linearize-soc;
 	qcom,cl-feedback-on;
+	qcom,tcss-enable;
+	qcom,vbatt-cutoff-mv = <3400>;
+	qcom,vbatt-low-mv = <3300>;
+	qcom,vbatt-low-cold-mv = <3700>;
+	qcom,vbatt-empty-mv = <3000>;
+	qcom,vbatt-empty-cold-mv = <3000>;
+	qcom,s3-entry-ibat-ua = <18000>;
+	qcom,s3-exit-ibat-ua = <38000>;
+	qcom,s3-entry-fifo-length = <2>;
+	qcom,qg-vadc = <&pm6150_vadc>;
+	qcom,qg-ext-sns;
 };
 
 &pm6150_charger {
@@ -387,16 +398,23 @@
 			   "vph_voltage";
 	qcom,battery-data = <&mtp_batterydata>;
 	qcom,auto-recharge-soc = <98>;
-	qcom,step-charging-enable;
+	qcom,fcc-max-ua = <3000000>;
+	qcom,fv-max-uv = <4450000>;
+	qcom,chg-term-src = <1>;
+	qcom,chg-term-current-ma = <(-200)>;
 	qcom,sw-jeita-enable;
 	qcom,fcc-stepping-enable;
 	qcom,suspend-input-on-debug-batt;
 	qcom,sec-charger-config = <3>;
-	qcom,thermal-mitigation = <4200000 3500000 3000000
-			2500000 2000000 1500000 1000000 500000>;
+	qcom,thermal-mitigation = <3000000 2500000 2000000 1500000 1000000 500000>;
 	dpdm-supply = <&qusb_phy0>;
 	qcom,charger-temp-max = <800>;
 	qcom,smb-temp-max = <800>;
+	qcom,fcc-step-delay-ms = <100>;
+	qcom,fcc-step-size-ua = <100000>;
+	qcom,disable-sw-thermal-regulation;
+	qcom,disable-fcc-restriction;
+	qcom,smb-internal-pull-kohm = <0>;
 	qcom,usbpd-phandle = <&pm6150_pdphy>;
 };
 
@@ -426,6 +444,39 @@
 
 &qupv3_se9_i2c {
 	status = "ok";
+
+	sc8551-charger@65{
+		compatible = "sc,sc8551-standalone";
+		reg = <0x65>;
+		sc,sc8551,bat-ovp-disale = <0>;
+		sc,sc8551,bat-ocp_disable = <0>;
+		sc,sc8551,bat-ovp-alarm-disable = <0>;
+		sc,sc8551,bus-ocp-disable = <0>;
+		sc,sc8551,bus-ovp-alarm-disabl = <0>;
+		sc,sc8551,bus-ocp-alarm-disabl = <0>;
+		sc,sc8551,bat-ucp-alarm-disabl = <0>;
+		sc,sc8551,bat-therm-disable = <0>;
+		sc,sc8551,bus-therm-disable = <0>;
+
+		sc,sc8551,bat-ovp-threshold = <4525>;
+		sc,sc8551,bat-ovp-alarm-threshold = <4400>;
+		sc,sc8551,bat-ocp-threshold = <8000>;
+		sc,sc8551,bat-ocp-alarm-threshold = <7500>;
+
+		sc,sc8551,bus-ovp-threshold = <12000>;
+		sc,sc8551,bus-ovp-alarm-threshold = <11000>;
+		sc,sc8551,bus-ocp-threshold = <3750>;
+		sc,sc8551,bus-ocp-alarm-threshold = <3500>;
+
+		sc,sc8551,bat-ucp-alarm-threshold = <2000>;
+
+		sc,sc8551,bat-therm-threshold = <0x15>;/*4.1%*/
+		sc,sc8551,bus-therm-threshold = <0x15>;/*4.1%*/
+		sc,sc8551,die-therm-threshold = <125>;
+
+		sc,sc8551,ac-ovp-threshold = <17>;
+		sc,sc8551,sense-resistor-mohm = <5>;
+	};
 	//#include "smb1390.dtsi"
 	//#include "smb1355.dtsi"
 		bq2597x-charger@65 {
