@@ -723,7 +723,7 @@ static int pd_send_msg(struct usbpd *pd, u8 msg_type, const u32 *data,
 	spin_lock_irqsave(&pd->rx_lock, flags);
 	if (!list_empty(&pd->rx_q)) {
 		spin_unlock_irqrestore(&pd->rx_lock, flags);
-		usbpd_dbg(&pd->dev, "Abort send due to pending RX\n");
+		//usbpd_dbg(&pd->dev, "Abort send due to pending RX\n");
 		return -EBUSY;
 	}
 	spin_unlock_irqrestore(&pd->rx_lock, flags);
@@ -753,7 +753,7 @@ static int pd_send_ext_msg(struct usbpd *pd, u8 msg_type,
 	u8 num_objs;
 
 	if (data_len > PD_MAX_EXT_MSG_LEN) {
-		usbpd_warn(&pd->dev, "Extended message length exceeds max, truncating...\n");
+		//usbpd_warn(&pd->dev, "Extended message length exceeds max, truncating...\n");
 		data_len = PD_MAX_EXT_MSG_LEN;
 	}
 
@@ -826,8 +826,8 @@ static int pd_select_pdo(struct usbpd *pd, int pdo_pos, int uv, int ua)
 		if ((uv / 100000) > PD_APDO_MAX_VOLT(pdo) ||
 			(uv / 100000) < PD_APDO_MIN_VOLT(pdo) ||
 			(ua / 50000) > PD_APDO_MAX_CURR(pdo) || (ua < 0)) {
-			usbpd_err(&pd->dev, "uv (%d) and ua (%d) out of range of APDO\n",
-					uv, ua);
+			//usbpd_err(&pd->dev, "uv (%d) and ua (%d) out of range of APDO\n",
+			//		uv, ua);
 			return -EINVAL;
 		}
 
@@ -898,7 +898,7 @@ static void pd_send_hard_reset(struct usbpd *pd)
 {
 	union power_supply_propval val = {0};
 
-	usbpd_dbg(&pd->dev, "send hard reset");
+	//usbpd_dbg(&pd->dev, "send hard reset");
 
 	pd->hard_reset_count++;
 	pd_phy_signal(HARD_RESET_SIG);
@@ -912,7 +912,7 @@ static void kick_sm(struct usbpd *pd, int ms)
 	pd->sm_queued = true;
 
 	if (ms) {
-		usbpd_dbg(&pd->dev, "delay %d ms", ms);
+		//usbpd_dbg(&pd->dev, "delay %d ms", ms);
 		hrtimer_start(&pd->timer, ms_to_ktime(ms), HRTIMER_MODE_REL);
 	} else {
 		queue_work(pd->wq, &pd->sm_work);
@@ -931,7 +931,7 @@ static void phy_sig_received(struct usbpd *pd, enum pd_sig_type sig)
 	pd->hard_reset_recvd = true;
 	pd->hard_reset_recvd_time = ktime_get();
 
-	usbpd_err(&pd->dev, "hard reset received\n");
+	//usbpd_err(&pd->dev, "hard reset received\n");
 
 	power_supply_set_property(pd->usb_psy,
 			POWER_SUPPLY_PROP_PD_IN_HARD_RESET, &val);
@@ -966,7 +966,7 @@ static void pd_request_chunk_work(struct work_struct *w)
 		pd->tx_msgid[req->sop] =
 			(pd->tx_msgid[req->sop] + 1) & PD_MAX_MSG_ID;
 	} else {
-		usbpd_err(&pd->dev, "could not send chunk request\n");
+		//usbpd_err(&pd->dev, "could not send chunk request\n");
 
 		/* queue what we have anyway */
 		spin_lock_irqsave(&pd->rx_lock, flags);
@@ -1060,7 +1060,7 @@ static struct rx_msg *pd_ext_msg_received(struct usbpd *pd, u16 header, u8 *buf,
 		struct pd_request_chunk *req;
 
 		if (pd->rx_ext_msg && pd->rx_ext_msg != rx_msg) {
-			usbpd_dbg(&pd->dev, "stale previous rx_ext_msg?\n");
+			//usbpd_dbg(&pd->dev, "stale previous rx_ext_msg?\n");
 			kfree(pd->rx_ext_msg);
 		}
 
@@ -1140,10 +1140,10 @@ static void phy_msg_received(struct usbpd *pd, enum pd_sop_type sop,
 
 	msg_type = PD_MSG_HDR_TYPE(header);
 	num_objs = PD_MSG_HDR_COUNT(header);
-	usbpd_dbg(&pd->dev, "%s type(%d) num_objs(%d)\n",
-			msg_to_string(msg_type, num_objs,
-				PD_MSG_HDR_IS_EXTENDED(header)),
-			msg_type, num_objs);
+	//usbpd_dbg(&pd->dev, "%s type(%d) num_objs(%d)\n",
+	//		msg_to_string(msg_type, num_objs,
+	//			PD_MSG_HDR_IS_EXTENDED(header)),
+	//		msg_type, num_objs);
 
 	if (!PD_MSG_HDR_IS_EXTENDED(header)) {
 		rx_msg = kzalloc(sizeof(*rx_msg) + len, GFP_ATOMIC);
@@ -2936,8 +2936,8 @@ static void usbpd_sm(struct work_struct *w)
 			memcpy(&pd->received_pdos, rx_msg->payload,
 					min_t(size_t, rx_msg->data_len,
 						sizeof(pd->received_pdos)));
-			for(i=0; i < 7; i++)
-				pr_err("PDO[%d]=%X\n", i, pd->received_pdos[i]);
+			for(i=0; i < 7; i++);
+			//	pr_err("PDO[%d]=%X\n", i, pd->received_pdos[i]);
 
 			pd->src_cap_id++;
 
@@ -2945,7 +2945,7 @@ static void usbpd_sm(struct work_struct *w)
 		} else if (pd->hard_reset_count < 3) {
 			usbpd_set_state(pd, PE_SNK_HARD_RESET);
 		} else {
-			usbpd_dbg(&pd->dev, "Sink hard reset count exceeded, disabling PD\n");
+			//usbpd_dbg(&pd->dev, "Sink hard reset count exceeded, disabling PD\n");
 
 			val.intval = 0;
 			power_supply_set_property(pd->usb_psy,

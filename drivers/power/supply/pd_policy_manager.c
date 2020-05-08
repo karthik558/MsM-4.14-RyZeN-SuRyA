@@ -17,7 +17,7 @@
 #define PD_SRC_PDO_TYPE_VARIABLE	2
 #define PD_SRC_PDO_TYPE_AUGMENTED	3
 
-#define BATT_MAX_CHG_VOLT		4400
+#define BATT_MAX_CHG_VOLT		4450
 #define BATT_FAST_CHG_CURR		6000
 #define	BUS_OVP_THRESHOLD		12000
 #define	BUS_OVP_ALARM_THRESHOLD		9500
@@ -521,8 +521,8 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 				pdpm->cp.bus_ocp_fault, pdpm->cp.bat_ovp_fault,
 				pdpm->cp.bus_ovp_fault);
 	        return PM_ALGO_RET_OTHER_FAULT; /* go to switch, and try to ramp up*/
-	} else if (!pdpm->cp.charge_enabled || pdpm->cp.vbus_error_low
-				|| pdpm->cp.vbus_error_high) {
+	} else if (!pdpm->cp.charge_enabled || (pdpm->cp.charge_enabled && (pdpm->cp.vbus_error_low
+				|| pdpm->cp.vbus_error_high))) {
 		pr_notice("cp.charge_enabled:%d vbus_error_low:%d vbus_error_high:%d\n",
 				pdpm->cp.charge_enabled, pdpm->cp.vbus_error_low, 
 				pdpm->cp.vbus_error_high);
@@ -888,7 +888,7 @@ static int usbpd_psy_notifier_cb(struct notifier_block *nb,
 
 	if (psy == pdpm->cp_psy || psy == pdpm->usb_psy) {
 		spin_lock_irqsave(&pdpm->psy_change_lock, flags);
-		pr_err("[SC manager] >>>pdpm->psy_change_running : %d\n", pdpm->psy_change_running);
+		//pr_err("[SC manager] >>>pdpm->psy_change_running : %d\n", pdpm->psy_change_running);
 		if (!pdpm->psy_change_running) {
 			pdpm->psy_change_running = true;
 			if (psy == pdpm->cp_psy)
