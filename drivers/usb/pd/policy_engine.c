@@ -28,7 +28,6 @@
 #include <linux/usb/class-dual-role.h>
 #include <linux/usb/usbpd.h>
 #include "usbpd.h"
-
 enum usbpd_state {
 	PE_UNKNOWN,
 	PE_ERROR_RECOVERY,
@@ -3461,7 +3460,7 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 	union extcon_property_value eval;
 	int ret;
 
-	usbpd_err(&pd->dev, "psy_changed\n");
+	//usbpd_err(&pd->dev, "psy_changed\n");
 	if (ptr != pd->usb_psy || evt != PSY_EVENT_PROP_CHANGED)
 		return 0;
 

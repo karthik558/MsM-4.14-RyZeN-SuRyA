@@ -1990,7 +1990,7 @@ static void bq2597x_check_fault_status(struct bq2597x *bq)
 	bool changed = false;
 
 	mutex_lock(&bq->data_lock);
-	pr_err("bq2597x_check_fault_status\n");
+	//pr_err("bq2597x_check_fault_status\n");
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_10, &stat);
 	if (!ret && stat)
@@ -2026,9 +2026,8 @@ static irqreturn_t bq2597x_charger_interrupt(int irq, void *dev_id)
 {
 	struct bq2597x *bq = dev_id;
 
-	bq_err("INT OCCURED\n");
+	bq_dbg("INT OCCURED\n");
 
-//	bq2597x_dump_reg(bq);
 #if 1
 	mutex_lock(&bq->irq_complete);
 	bq->irq_waiting = true;
@@ -2048,7 +2047,7 @@ static irqreturn_t bq2597x_charger_interrupt(int irq, void *dev_id)
 	bq2597x_check_fault_status(bq);
 #endif
 
-#if 1
+#if 0
 	bq2597x_dump_reg(bq);
 #endif
 	mutex_unlock(&bq->irq_complete);

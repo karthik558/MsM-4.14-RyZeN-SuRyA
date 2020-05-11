@@ -167,6 +167,7 @@ struct usbpd_pm {
 	struct power_supply *cp_sec_psy;
 	struct power_supply *sw_psy;
 	struct power_supply *usb_psy;
+	struct power_supply *bms_psy;
 };
 
 struct pdpm_config {
