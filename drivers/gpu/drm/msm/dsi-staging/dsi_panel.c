@@ -44,7 +44,7 @@
 #define DEFAULT_PANEL_PREFILL_LINES	25
 #define TICKS_IN_MICRO_SECOND		1000000
 
-static int lcd_esd_irq_handler;
+extern void lcd_esd_enable(bool on);
 char g_lcd_id[64];
 
 enum dsi_dsc_ratio_type {
@@ -515,6 +515,8 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	rc = dsi_pwr_enable_regulator(&panel->power_info, false);
 	if (rc)
 		pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
+
+	mdelay(5);
 
 	return rc;
 }
@@ -3169,7 +3171,7 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 
 	/* esd-err-flag method will be prefered */
 	esd_config->esd_err_irq_gpio = of_get_named_gpio(panel->panel_of_node, "qcom,esd-err-int-gpio", 0);
-	esd_config->esd_err_irq_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
+	esd_config->esd_err_irq_flags = IRQF_TRIGGER_RISING | IRQF_ONESHOT;
 
 	if (gpio_is_valid(esd_config->esd_err_irq_gpio)) {
 		pr_info("esd irq gpio is valid\n");
@@ -3441,8 +3443,6 @@ int dsi_panel_drv_init(struct dsi_panel *panel,
 	mutex_lock(&panel->panel_lock);
 
 	dev = &panel->mipi_device;
-
-	lcd_esd_irq_handler = 0;
 
 	dev->host = host;
 	/*
@@ -4161,16 +4161,6 @@ int dsi_panel_post_switch(struct dsi_panel *panel)
 	return rc;
 }
 
-/*for check if panel on needed enable esd irq*/
-void lcd_esd_handler(bool on)
-{
-	if (on)
-		lcd_esd_irq_handler = 1;
-	else
-		lcd_esd_irq_handler = 0;
-}
-EXPORT_SYMBOL(lcd_esd_handler);
-
 int dsi_panel_enable(struct dsi_panel *panel)
 {
 	int rc = 0;
@@ -4190,10 +4180,7 @@ int dsi_panel_enable(struct dsi_panel *panel)
 		panel->panel_initialized = true;
 	mutex_unlock(&panel->panel_lock);
 
-	if (lcd_esd_irq_handler == 1) {
-		enable_irq(panel->esd_config.esd_err_irq);
-		lcd_esd_irq_handler = 0;
-	}
+	lcd_esd_enable(1);
 
 	return rc;
 }
@@ -4265,6 +4252,8 @@ int dsi_panel_disable(struct dsi_panel *panel)
 		       panel->power_mode == SDE_MODE_DPMS_LP2))
 			dsi_pwr_panel_regulator_mode_set(&panel->power_info,
 				"ibb", REGULATOR_MODE_STANDBY);
+
+		lcd_esd_enable(0);
 
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_OFF);
 		if (rc) {

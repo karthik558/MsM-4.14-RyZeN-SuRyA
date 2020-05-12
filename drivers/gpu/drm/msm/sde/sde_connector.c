@@ -24,7 +24,7 @@
 #include "sde_crtc.h"
 #include "sde_rm.h"
 
-extern void lcd_esd_handler(bool on);
+static int lcd_esd_irq = 0;
 
 #define BL_NODE_NAME_SIZE 32
 
@@ -1840,6 +1840,15 @@ static int sde_connector_atomic_check(struct drm_connector *connector,
 	return 0;
 }
 
+void lcd_esd_enable(bool on)
+{
+  if(on)
+    lcd_esd_irq = 0;
+  else
+    lcd_esd_irq = 1;
+}
+EXPORT_SYMBOL(lcd_esd_enable);
+
 static void esd_recovery(int irq, void *data)
 {
 	struct sde_connector *c_conn = data;
@@ -1858,8 +1867,7 @@ static void esd_recovery(int irq, void *data)
 		panel_on = dsi_display->panel->panel_initialized;
 
 	if (panel_on) {
-		disable_irq_nosync(irq);
-		lcd_esd_handler(1);
+		lcd_esd_enable(0);
 		c_conn->panel_dead = true;
 		event.type = DRM_EVENT_PANEL_DEAD;
 		event.length = sizeof(bool);
@@ -1874,6 +1882,11 @@ static void esd_recovery(int irq, void *data)
 
 static irqreturn_t esd_err_irq_handle(int irq, void *data)
 {
+	pr_info("esd check irq report lcd_esd_irq = %d\n", lcd_esd_irq);
+
+	if (lcd_esd_irq)
+		return IRQ_HANDLED;
+
 	esd_recovery(irq, data);
 
 	return IRQ_HANDLED;
