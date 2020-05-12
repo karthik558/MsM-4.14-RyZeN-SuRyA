@@ -1622,12 +1622,12 @@
 		cam_sensor_rear_temp_active:cam_sensor_rear_temp_active{
 						/* REST */
 			mux {
-				pins = "gpio72";
+				pins = "gpio72","gpio88";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio72";
+				pins = "gpio72","gpio88";
 				bias-disable;/* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -1636,12 +1636,12 @@
 		cam_sensor_rear_temp_suspend:cam_sensor_rear_temp_suspend{
 						/* REST */
 			mux {
-				pins = "gpio72";
+				pins = "gpio72","gpio88";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio72";
+				pins = "gpio72","gpio88";
 				bias-pull-down;/* PULL DOWN */
 				drive-strength = <2>; /* 2 MA */
 				output-low;
@@ -1679,12 +1679,12 @@
 		cam_sensor_rear_active: cam_sensor_rear_active {
 			/* RESET */
 			mux {
-				pins = "gpio25";
+				pins = "gpio25","gpio66";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio25";
+				pins = "gpio25","gpio66";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -1693,12 +1693,12 @@
 		cam_sensor_rear_suspend: cam_sensor_rear_suspend {
 			/* RESET */
 			mux {
-				pins = "gpio25";
+				pins = "gpio25","gpio66";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio25";
+				pins = "gpio25","gpio66";
 				bias-pull-down; /* PULL DOWN */
 				drive-strength = <2>; /* 2 MA */
 				output-low;
