@@ -325,7 +325,6 @@
 			qcom,pmic-revid = <&pm6150l_revid>;
 			qcom,fs-current-limit = <25000>;
 			qcom,auto-calibration;
-			qcom,string-cfg = <7>;
 			status = "ok";
 
 			wled_flash: qcom,wled-flash {
