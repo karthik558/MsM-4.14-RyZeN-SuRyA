@@ -3412,7 +3412,7 @@
 
 &pm6150l_vadc {
 	pinctrl-names = "default";
-	pinctrl-0 = <&nvm_therm_default>;
+	pinctrl-0 = <&backlight_therm_default>;
 
 	conn_therm {
 		reg = <ADC_AMUX_THM1_PU2>;
@@ -3425,6 +3425,14 @@
 	smb_therm {
 		reg = <ADC_AMUX_THM2>;
 		label = "smb_therm";
+		qcom,hw-settle-time = <200>;
+		qcom,pre-scaling = <1 1>;
+	};
+
+	backlight_therm {
+		reg = <ADC_GPIO1_PU2>;
+		label = "backlight_therm";
+		qcom,ratiometric;
 		qcom,hw-settle-time = <200>;
 		qcom,pre-scaling = <1 1>;
 	};
@@ -3453,16 +3461,30 @@
 			bias-high-impedance;
 		};
 	};
+
+	backlight_therm {
+		backlight_therm_default: backlight_therm_default {
+			pins = "gpio5";
+			bias-high-impedance;
+		};
+	};
 };
 
 &pm6150l_adc_tm {
 	io-channels = <&pm6150l_vadc ADC_AMUX_THM1_PU2>,
 			<&pm6150l_vadc ADC_AMUX_THM3_PU2>,
+			<&pm6150l_vadc ADC_GPIO1_PU2>,
 			<&pm6150l_vadc ADC_GPIO4_PU2>;
 
 	/* Channel nodes */
 	conn_therm {
 		reg = <ADC_AMUX_THM1_PU2>;
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+	};
+
+	backlight_therm {
+		reg = <ADC_GPIO1_PU2>;
 		qcom,ratiometric;
 		qcom,hw-settle-time = <200>;
 	};
