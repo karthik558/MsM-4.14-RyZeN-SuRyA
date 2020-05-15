@@ -3412,7 +3412,7 @@
 
 &pm6150l_vadc {
 	pinctrl-names = "default";
-	pinctrl-0 = <&backlight_therm_default>;
+	pinctrl-0 = <&nvm_therm_default>, <&backlight_therm_default>;
 
 	conn_therm {
 		reg = <ADC_AMUX_THM1_PU2>;
