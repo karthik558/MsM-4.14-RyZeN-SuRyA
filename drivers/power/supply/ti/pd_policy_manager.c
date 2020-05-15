@@ -49,7 +49,7 @@ enum {
 
 static const struct pdpm_config pm_config = {
 	.bat_volt_lp_lmt		= BAT_VOLT_LOOP_LMT,
-	.bat_curr_lp_lmt		= BAT_CURR_LOOP_LMT,// + 1000,
+	.bat_curr_lp_lmt		= BAT_CURR_LOOP_LMT + 1000,
 	.bus_volt_lp_lmt		= BUS_VOLT_LOOP_LMT,
 	.bus_curr_lp_lmt		= BAT_CURR_LOOP_LMT >> 1,
 
@@ -69,7 +69,10 @@ static struct usbpd_pm *__pdpm;
 
 static int fc2_taper_timer;
 static int ibus_lmt_change_timer;
-
+static int battery_level_trigger_timer;
+static bool battery_level_trigger_keeping;
+#define BATTERY_LEVEL_TRIGGER_INTERVAL  (90000 / PM_WORK_RUN_INTERVAL)
+#define BATTERY_LEVEL_TRIGGER_KEEP  (5000 / PM_WORK_RUN_INTERVAL)
 
 static void usbpd_check_usb_psy(struct usbpd_pm *pdpm)
 {
@@ -111,15 +114,15 @@ static void usbpd_pm_update_cp_status(struct usbpd_pm *pdpm)
 	if (!pdpm->cp_psy)
 		return;
 
-	/*ret = power_supply_get_property(pdpm->cp_psy,
-			POWER_SUPPLY_PROP_SC_BATTERY_VOLTAGE, &val);
+	ret = power_supply_get_property(pdpm->cp_psy,
+			POWER_SUPPLY_PROP_TI_BATTERY_VOLTAGE, &val);
 	if (!ret)
-		pdpm->cp.vbat_volt = val.intval; */
+		pdpm->cp.vbat_volt = val.intval; 
 
-	/*ret = power_supply_get_property(pdpm->cp_psy,
-			POWER_SUPPLY_PROP_SC_BATTERY_CURRENT, &val);
+	ret = power_supply_get_property(pdpm->cp_psy,
+			POWER_SUPPLY_PROP_TI_BATTERY_CURRENT, &val);
 	if (!ret)
-		pdpm->cp.ibat_curr = val.intval;*/ 
+		pdpm->cp.ibat_curr = val.intval; 
 
 	ret = power_supply_get_property(pdpm->cp_psy,
 			POWER_SUPPLY_PROP_TI_BUS_VOLTAGE, &val);
@@ -421,7 +424,7 @@ static void usbpd_update_pps_status(struct usbpd_pm *pdpm)
 				pdpm->adapter_voltage, pdpm->adapter_current);
 	}
 }
-
+#if 0 
 static int usbpd_update_ibat_curr(struct usbpd_pm *pdpm)
 {
 	int ret;
@@ -447,6 +450,7 @@ static int usbpd_update_ibat_curr(struct usbpd_pm *pdpm)
 
 	return 0;
 }
+#endif
 #define TAPER_TIMEOUT	(5000 / PM_WORK_RUN_INTERVAL)
 #define IBUS_CHANGE_TIMEOUT  (500 / PM_WORK_RUN_INTERVAL)
 static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
@@ -463,7 +467,7 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 	static int ibus_limit;
 
 	if (ibus_limit == 0)
-		ibus_limit = pm_config.bus_curr_lp_lmt;// + 400;
+		ibus_limit = pm_config.bus_curr_lp_lmt + 400;
 
 	/* reduce bus current in cv loop */
 	if (pdpm->cp.vbat_volt > pm_config.bat_volt_lp_lmt - 50) {
@@ -472,7 +476,7 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 			ibus_limit = pm_config.bus_curr_lp_lmt - 400;
 		}
 	} else if (pdpm->cp.vbat_volt < pm_config.bat_volt_lp_lmt - 250) {
-		ibus_limit = pm_config.bus_curr_lp_lmt;// + 400;
+		ibus_limit = pm_config.bus_curr_lp_lmt + 400;
 		ibus_lmt_change_timer = 0;
 	} else {
 		ibus_lmt_change_timer = 0;
@@ -486,9 +490,11 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 
 
 	/* battery charge current loop*/
-	if (pdpm->cp.ibat_curr < pm_config.bat_curr_lp_lmt )
+	//if (pdpm->cp.ibat_curr < pm_config.bat_curr_lp_lmt )
+	if ((pdpm->cp.ibus_curr*2) < pm_config.bat_curr_lp_lmt )
 		step_ibat = pm_config.fc2_steps;
-	else if (pdpm->cp.ibat_curr > pm_config.bat_curr_lp_lmt + 100)
+	//else if (pdpm->cp.ibat_curr > pm_config.bat_curr_lp_lmt + 100)
+	else if ((pdpm->cp.ibus_curr*2) > pm_config.bat_curr_lp_lmt + 100)
 		step_ibat = -pm_config.fc2_steps;
 
 
@@ -546,7 +552,8 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 
 	/* charge pump taper charge */
 	if (pdpm->cp.vbat_volt > pm_config.bat_volt_lp_lmt - 50 
-			&& pdpm->cp.ibat_curr < pm_config.fc2_taper_current) {
+			&& (pdpm->cp.ibus_curr*2) < pm_config.fc2_taper_current) {
+			//&& pdpm->cp.ibat_curr < pm_config.fc2_taper_current) {
 		if (fc2_taper_timer++ > TAPER_TIMEOUT) {
 			pr_notice("charge pump taper charging done\n");
 			fc2_taper_timer = 0;
@@ -570,6 +577,26 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 	//if (pdpm->adapter_volt > 0
 	//		&& pdpm->request_voltage > pdpm->adapter_voltage + 500)
 	//	pdpm->request_voltage = pdpm->adapter_voltage + 500;
+
+	if (battery_level_trigger_keeping)
+	{
+
+		if (++battery_level_trigger_timer >= BATTERY_LEVEL_TRIGGER_KEEP)
+		{
+			pdpm->request_current += 250;
+			battery_level_trigger_keeping = false;
+			battery_level_trigger_timer = 0;
+		}
+	}
+	else
+	{
+		if (++battery_level_trigger_timer >= BATTERY_LEVEL_TRIGGER_INTERVAL)
+		{
+			pdpm->request_current -= 250;
+			battery_level_trigger_keeping = true;
+			battery_level_trigger_timer = 0;
+		}
+	}
 
 	return PM_ALGO_RET_OK;
 }
@@ -698,6 +725,8 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 				usbpd_pm_move_state(pdpm, PD_PM_STATE_FC2_TUNE);
 				ibus_lmt_change_timer = 0;
 				fc2_taper_timer = 0;
+				battery_level_trigger_timer = 0;
+				battery_level_trigger_keeping = false;
 			}
 		}
 		break;
@@ -786,7 +815,7 @@ static void usbpd_pm_workfunc(struct work_struct *work)
 
 	usbpd_pm_update_sw_status(pdpm);
 	usbpd_pm_update_cp_status(pdpm);
-	usbpd_update_ibat_curr(pdpm);
+	//usbpd_update_ibat_curr(pdpm);
 	if (pm_config.cp_sec_enable)
 		usbpd_pm_update_cp_sec_status(pdpm);
 
