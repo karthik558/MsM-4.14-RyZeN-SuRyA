@@ -622,6 +622,9 @@ int			pd_verifed;
 	int			dcin_uv_count;
 	ktime_t			dcin_uv_last_time;
 	int			last_wls_vout;
+	struct notifier_block notifier;
+	struct work_struct fb_notify_work;
+
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);

@@ -22,17 +22,26 @@ qcom,j6b-sunwoda-5020mah {
 	qcom,qg-batt-profile-ver = <100>;
 	mi,six-pin-battery;
 
-	qcom,jeita-fcc-ranges = <0  50   950000
-				51  100  2400000
-				101 150  3400000
+	qcom,jeita-fcc-ranges = <0  50   1000000
+				51  100  2500000
+				101 150  4100000
 				151 450  6000000
-				451 580  2400000>;
+				451 580  2500000>;
 
 	qcom,jeita-fv-ranges = <0   50   4450000
 				51  100  4450000
 				101 150  4450000
 				151 450  4450000
 				451 580  4100000>;
+
+	/* COOL = 10 degc, WARM = 45 degC */
+	qcom,jeita-soft-thresholds = <0x4ccc 0x20b8>;
+	/* COLD = 0 degC, HOT = 55 degC*/
+	qcom,jeita-hard-thresholds = <0x58cd 0x181d>;
+	/* COOL hys = 13 degC, WARM hys = 42 degC */
+	qcom,jeita-soft-hys-thresholds = <0x48d4 0x23c0>;
+	qcom,jeita-soft-fcc-ua = <1000000 2500000>;
+	qcom,jeita-soft-fv-uv = <4450000 4100000>;
 
 	qcom,fcc1-temp-lut {
 		qcom,lut-col-legend = <0 10 25 40 50>;
