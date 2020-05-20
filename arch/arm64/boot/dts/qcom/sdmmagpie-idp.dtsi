@@ -440,6 +440,10 @@
 			input-disable;
 		};
 	};
+
+	thermal_message: thermal-message {
+		board-sensor = "VIRTUAL-SENSOR";
+	};
 };
 
 &qupv3_se9_i2c {
