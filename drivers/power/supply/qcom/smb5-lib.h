@@ -33,6 +33,7 @@ enum print_reason {
 	PR_PARALLEL	= BIT(3),
 	PR_OTG		= BIT(4),
 	PR_WLS		= BIT(5),
+	PR_OEM		= BIT(6),
 };
 
 #define DEFAULT_VOTER			"DEFAULT_VOTER"
@@ -85,15 +86,19 @@ enum print_reason {
 #define DETACH_DETECT_VOTER		"DETACH_DETECT_VOTER"
 #define CC_MODE_VOTER			"CC_MODE_VOTER"
 #define MAIN_FCC_VOTER			"MAIN_FCC_VOTER"
+#define BATT_VERIFY_VOTER		"BATT_VERIFY_VOTER"
 #define DCIN_AICL_VOTER			"DCIN_AICL_VOTER"
 #define OVERHEAT_LIMIT_VOTER		"OVERHEAT_LIMIT_VOTER"
-#ifdef CONFIG_PD_VERIFY
 #define PD_VERIFED_VOTER		"PD_VERIFED_VOTER"
-#endif
+/* used for bq charge pump solution */
+#define MAIN_CHG_VOTER			"MAIN_CHG_VOTER"
+#define HVDCP3_START_ICL_VOTER	"HVDCP3_START_ICL_VOTER"
 
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
 
+#define PD_UNVERIFED_CURRENT		4800000
+#define PD_UNVERIFED_VOLTAGE		4450000
 #define VBAT_TO_VRAW_ADC(v)		div_u64((u64)v * 1000000UL, 194637UL)
 
 #define ITERM_LIMITS_PMI632_MA		5000
@@ -112,11 +117,16 @@ enum print_reason {
 #define DCIN_ICL_MAX_UA			1500000
 #define DCIN_ICL_STEP_UA		100000
 #ifdef CONFIG_PD_VERIFY
-#define PD_UNVERIFED_CURRENT		3000000
+
 #define PD_VERIFED_CURRENT			6000000
 #endif
 
 #define ROLE_REVERSAL_DELAY_MS		2000
+#define SIX_PIN_VFLOAT_VOTER		"SIX_PIN_VFLOAT_VOTER"
+#define WARM_VFLOAT_UV			4100000
+/* ffc related */
+#define NON_FFC_VFLOAT_VOTER			"NON_FFC_VFLOAT_VOTER"
+#define NON_FFC_VFLOAT_UV			4450000
 
 enum smb_mode {
 	PARALLEL_MASTER = 0,
@@ -398,6 +408,7 @@ struct smb_charger {
 	int			otg_delay_ms;
 	int			*weak_chg_icl_ua;
 	bool			pd_not_supported;
+	bool			batt_verified;
 
 	/* locks */
 	struct mutex		smb_lock;
@@ -463,6 +474,7 @@ struct smb_charger {
 	struct work_struct	jeita_update_work;
 	struct work_struct	moisture_protection_work;
 	struct work_struct	chg_termination_work;
+	struct work_struct	batt_verify_update_work;
 	struct work_struct	dcin_aicl_work;
 	struct delayed_work	ps_change_timeout_work;
 	struct delayed_work	clear_hdc_work;
@@ -618,9 +630,12 @@ int			pd_verifed;
 	/* wireless */
 
 	struct usbpd		*pd;
+	bool			use_bq_pump;
 
 	int			dcin_uv_count;
 	ktime_t			dcin_uv_last_time;
+	int			chg_term_current_thresh_hi_from_dts;
+	bool			support_ffc;
 	int			last_wls_vout;
 	struct notifier_block notifier;
 	struct work_struct fb_notify_work;
@@ -835,6 +850,9 @@ int smblib_get_qc3_main_icl_offset(struct smb_charger *chg, int *offset_ua);
 
 struct usbpd *smb_get_usbpd(void);
 int smblib_init(struct smb_charger *chg);
+int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable);
+int smblib_get_fastcharge_mode(struct smb_charger *chg);
+int smb5_config_iterm(struct smb_charger *chg, int hi_thresh, int low_thresh);
 int smblib_deinit(struct smb_charger *chg);
 int smblib_get_prop_battery_charging_enabled(struct smb_charger *chg,
                 union power_supply_propval *val);

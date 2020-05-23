@@ -13,6 +13,7 @@
 
 qcom,j6b-sunwoda-5020mah {
 	qcom,max-voltage-uv = <4450000>;
+	qcom,ffc-max-voltage-uv = <4480000>;
 	//qcom,fg-cc-cv-threshold-uv = <4450000>;
 	qcom,fastchg-current-ma = <6000>;
 	qcom,batt-id-kohm = <330>;
@@ -20,7 +21,10 @@ qcom,j6b-sunwoda-5020mah {
 	qcom,battery-therm-kohm = <100>;
 	qcom,battery-type = "j6b-sunwoda-5020mah";
 	qcom,qg-batt-profile-ver = <100>;
+	qcom,nom-batt-capacity-mah = <5160>;
 	mi,six-pin-battery;
+	mi,use-bq-pump;
+	mi,ffc-iterm-change-by-temp;
 
 	qcom,jeita-fcc-ranges = <0  50   1000000
 				51  100  2500000

@@ -78,6 +78,7 @@ struct qg_dt {
 	bool			fvss_enable;
 	bool			multi_profile_load;
 	bool			tcss_enable;
+	bool			ffc_iterm_change_by_temp;
 	bool			bass_enable;
 };
 
@@ -159,7 +160,8 @@ struct qpnp_qg {
 	bool			force_soc;
 	bool			fvss_active;
 	bool			tcss_active;
-	bool			bass_active;
+	bool            bass_active;
+	bool			fastcharge_mode_enabled;
 	int			charge_status;
 	int			charge_type;
 	int			chg_iterm_ma;
