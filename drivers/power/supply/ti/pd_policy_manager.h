@@ -65,9 +65,39 @@ enum pm_state {
 #define VBAT_REG_STATUS_MASK		(1 << VBAT_REG_STATUS_SHIFT)
 #define IBAT_REG_STATUS_MASK		(1 << VBAT_REG_STATUS_SHIFT)
 
+/* voters for usbpd */
+#define STEP_BMS_CHG_VOTER	"STEP_BMS_CHG_VOTER"
+#define BQ_TAPER_FCC_VOTER	"BQ_TAPER_FCC_VOTER"
 
+/* defined for non_verified pps charger maxium fcc */
+#define NON_VERIFIED_PPS_FCC_MAX		3000
+#define MAX_THERMAL_LEVEL			13
+/* jeita related */
+#define JEITA_WARM_THR			450
+#define JEITA_COOL_NOT_ALLOW_CP_THR			100
+#define PDO_MAX_NUM			7
+/*
+ * add hysteresis for warm threshold to avoid flash
+ * charge and normal charge switch frequently at
+ * the warm threshold
+ */
+#define JEITA_HYSTERESIS			20
+/* product related */
+#define LOW_POWER_PPS_CURR_THR			2000
+#define XIAOMI_LOW_POWER_PPS_CURR_MAX			1500
+#define XIAOMI_LOW_POWER_PPS_CURR_MAX			1500
+#define PPS_VOL_MAX			11000
+#define PPS_VOL_HYS			1000
+
+#define STEP_MV			20
+#define TAPER_VOL_HYS			80
+#define TAPER_WITH_IBUS_HYS			60
+#define TAPER_IBUS_THR			450
+#define BQ_TAPER_HYS_MV			30
+#define BQ_TAPER_DECREASE_STEP_MA			200
 struct sw_device {
 	bool charge_enabled;
+	bool charge_limited;
 };
 
 struct usbpd_pdo {
@@ -117,18 +147,18 @@ struct cp_device {
 	int  vbus_volt;
 	int  ibat_curr;
 	int  ibus_curr;
-	
-	int  bat_temp; 
+
+	int  bat_temp;
 	int  bus_temp;
 	int  die_temp;
 };
 
-
 #define PM_STATE_LOG_MAX    32
 struct usbpd_pm {
 	struct device *dev;
+
 	enum pm_state state;
-	
+
 	struct cp_device cp;
 	struct cp_device cp_sec;
 
@@ -153,7 +183,6 @@ struct usbpd_pm {
 	int	adapter_current;
 	int	adapter_ptf;
 	bool	adapter_omf;
-
 	struct delayed_work pm_work;
 
 	struct notifier_block nb;
@@ -163,11 +192,25 @@ struct usbpd_pm {
 	struct work_struct usb_psy_change_work;
 	spinlock_t psy_change_lock;
 
+	struct votable		*fcc_votable;
 	struct power_supply *cp_psy;
 	struct power_supply *cp_sec_psy;
 	struct power_supply *sw_psy;
 	struct power_supply *usb_psy;
 	struct power_supply *bms_psy;
+
+	/* dtsi properties */
+	int			bat_volt_max;
+	int			ffc_bat_volt_max;
+	int			bat_curr_max;
+	int			bus_volt_max;
+	int			bus_curr_max;
+	int			bus_curr_compensate;
+	bool		cp_sec_enable;
+	/* jeita or thermal related */
+	bool			jeita_triggered;
+	bool			is_temp_out_fc2_range;
+
 };
 
 struct pdpm_config {
@@ -175,7 +218,8 @@ struct pdpm_config {
 	int	bat_curr_lp_lmt;
 	int	bus_volt_lp_lmt;
 	int	bus_curr_lp_lmt;
-	
+	int	bus_curr_compensate;
+
 	int	fc2_taper_current;
 	int	fc2_steps;
 
@@ -185,7 +229,6 @@ struct pdpm_config {
 
 	bool	cp_sec_enable;
 	bool	fc2_disable_sw;		/* disable switching charger during flash charge*/
-
 };
 
 extern int usbpd_get_pps_status(struct usbpd *pd, u32 *status);

@@ -123,7 +123,6 @@ static inline void pd_phy_close(void)
 }
 #endif
 
-#ifdef CONFIG_PD_VERIFY
 enum uvdm_state {
 	USBPD_UVDM_DISCONNECT,
 	USBPD_UVDM_CHARGER_VERSION,
@@ -156,6 +155,5 @@ struct usbpd_vdm_data {
 	unsigned long s_secert[USBPD_UVDM_SS_LEN];
 	unsigned long digest[USBPD_UVDM_SS_LEN];
 };
-#endif
 
 #endif /* _USBPD_H */

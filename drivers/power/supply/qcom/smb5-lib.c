@@ -1275,12 +1275,27 @@ static int smblib_notifier_call(struct notifier_block *nb,
 {
 	struct power_supply *psy = v;
 	struct smb_charger *chg = container_of(nb, struct smb_charger, nb);
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+	int rc;
+	union power_supply_propval pval = {0,};
+#endif
 
 	if (!strcmp(psy->desc->name, "bms")) {
 		if (!chg->bms_psy)
 			chg->bms_psy = psy;
-		if (ev == PSY_EVENT_PROP_CHANGED)
+		if (ev == PSY_EVENT_PROP_CHANGED) {
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+			rc = power_supply_get_property(chg->bms_psy,
+					POWER_SUPPLY_PROP_AUTHENTIC, &pval);
+			if (rc < 0) {
+				pr_err("Couldn't get batt verify status rc=%d\n", rc);
+			}
+			chg->batt_verified = pval.intval;
+			pr_err("batt_verified =%d\n", chg->batt_verified);
+			schedule_work(&chg->batt_verify_update_work);
+#endif
 			schedule_work(&chg->bms_update_work);
+		}
 	}
 
 	if (chg->jeita_configured == JEITA_CFG_NONE)
@@ -2430,21 +2445,29 @@ int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 }
 
 int smblib_get_prop_battery_charging_enabled(struct smb_charger *chg,
-				union power_supply_propval *val)
+					union power_supply_propval *val)
 {
-	int rc;
-	u8 reg;
+	val->intval = !(get_client_vote(chg->usb_icl_votable, MAIN_CHG_VOTER)
+			== MAIN_CHARGER_STOP_ICL);
+	return 0;
+}
 
-	rc = smblib_read(chg, CHARGING_ENABLE_CMD_REG, &reg);
-	if (rc < 0) {
-		smblib_err(chg,
-			"Couldn't read battery CHARGING_ENABLE_CMD rc=%d\n",
-			rc);
-		return rc;
-	}
+int smblib_get_prop_battery_charging_limited(struct smb_charger *chg,
+					union power_supply_propval *val)
+{
+	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3)
+		val->intval = (get_client_vote(chg->usb_icl_votable, MAIN_CHG_VOTER)
+				== QC3_CHARGER_ICL);
+	else
+		val->intval = (get_client_vote(chg->usb_icl_votable, MAIN_CHG_VOTER)
+				== MAIN_CHARGER_ICL);
+	return 0;
+}
 
-	reg = reg & CHARGING_ENABLE_CMD_BIT;
-	val->intval = (reg == CHARGING_ENABLE_CMD_BIT);
+int smblib_get_prop_battery_bq_input_suspend(struct smb_charger *chg,
+					union power_supply_propval *val)
+{
+	val->intval = chg->bq_input_suspend;
 	return 0;
 }
 
@@ -2472,6 +2495,7 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 		return rc;
 	}
 
+	chg->bq_input_suspend = !!(val->intval);
 	power_supply_changed(chg->batt_psy);
 	return rc;
 }
@@ -2500,36 +2524,6 @@ int smblib_set_prop_batt_status(struct smb_charger *chg,
 	return 0;
 }
 
-int smblib_set_prop_battery_charging_enabled(struct smb_charger *chg,
-			  const union power_supply_propval *val)
-{
-  int rc;
-
-  smblib_dbg(chg, PR_MISC, "%s intval= %x\n",__FUNCTION__,val->intval);
-
-  if (1 == val->intval) {
-	  rc = smblib_masked_write(chg, CHARGING_ENABLE_CMD_REG,
-		  CHARGING_ENABLE_CMD_BIT,CHARGING_ENABLE_CMD_BIT);
-	  if (rc < 0) {
-		  smblib_err(chg, "Couldn't enable charging rc=%d\n",
-					  rc);
-		  return rc;
-	  }
-  }
-  else if (0 == val->intval) {
-	  rc = smblib_masked_write(chg, CHARGING_ENABLE_CMD_REG,
-		  CHARGING_ENABLE_CMD_BIT,0);
-	  if (rc < 0) {
-		  smblib_err(chg, "Couldn't disable charging rc=%d\n",
-					  rc);
-		  return rc;
-	  }
-  }
-  else
-	  smblib_err(chg, "Couldn't disable charging rc=%d\n",rc);
-
-  return 0;
-}
 extern union power_supply_propval lct_therm_lvl_reserved;
 extern bool lct_backlight_off;
 extern int LctIsInCall;
@@ -3144,6 +3138,7 @@ out:
 		if (chg->thermal_status == TEMP_SHUT_DOWN_SMB)
 			goto exit;
 
+		chg->bq_input_suspend = !!suspend_input;
 		/* Suspend input if SHDN threshold reached */
 		vote(chg->dc_suspend_votable, SW_THERM_REGULATION_VOTER,
 							suspend_input, 0);
@@ -4631,12 +4626,12 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 		vote(chg->usb_icl_votable, PD_VOTER, true, USBIN_100MA);
 		vote(chg->usb_icl_votable, USB_PSY_VOTER, false, 0);
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
-#ifdef CONFIG_PD_VERIFY
+
 		/*set the icl to PD_UNVERIFED_CURRENT when pd is not verifed*/
 		rc = vote(chg->usb_icl_votable, PD_VERIFED_VOTER, true, PD_UNVERIFED_CURRENT);
 		if (rc < 0)
 			smblib_err(chg, "Couldn't unvote PD_VERIFED_VOTER, rc=%d\n", rc);
-#endif
+
 
 		/*
 		 * For PPS, Charge Pump is preferred over parallel charger if
@@ -6008,9 +6003,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->pl_enable_votable_indirect, USBIN_I_VOTER, false, 0);
 	vote(chg->pl_enable_votable_indirect, USBIN_V_VOTER, false, 0);
 	vote(chg->awake_votable, PL_DELAY_VOTER, false, 0);
-#ifdef CONFIG_PD_VERIFY
 	vote(chg->usb_icl_votable, PD_VERIFED_VOTER, false, 0);
-#endif
 
 	/* Remove SW thermal regulation WA votes */
 	vote(chg->usb_icl_votable, SW_THERM_REGULATION_VOTER, false, 0);
@@ -6094,11 +6087,9 @@ static void typec_src_removal(struct smb_charger *chg)
 	}
 
 	chg->typec_legacy = false;
-#ifdef CONFIG_PD_VERIFY
 	pr_err("%s:", __func__);
 	if (chg->pd_verifed)
 		chg->pd_verifed = false;
-#endif
 
 	del_timer_sync(&chg->apsd_timer);
 	chg->apsd_ext_timeout = false;

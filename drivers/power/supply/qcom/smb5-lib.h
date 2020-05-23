@@ -116,10 +116,11 @@ enum print_reason {
 #define DCIN_ICL_MIN_UA			100000
 #define DCIN_ICL_MAX_UA			1500000
 #define DCIN_ICL_STEP_UA		100000
-#ifdef CONFIG_PD_VERIFY
-
 #define PD_VERIFED_CURRENT			6000000
-#endif
+
+/* used for bq charge pump solution */
+#define MAIN_CHG_VOTER			"MAIN_CHG_VOTER"
+#define HVDCP3_START_ICL_VOTER	"HVDCP3_START_ICL_VOTER"
 
 #define ROLE_REVERSAL_DELAY_MS		2000
 #define SIX_PIN_VFLOAT_VOTER		"SIX_PIN_VFLOAT_VOTER"
@@ -127,7 +128,11 @@ enum print_reason {
 /* ffc related */
 #define NON_FFC_VFLOAT_VOTER			"NON_FFC_VFLOAT_VOTER"
 #define NON_FFC_VFLOAT_UV			4450000
+/* used for bq charge pump solution */
+#define MAIN_CHARGER_ICL	2000000
+#define QC3_CHARGER_ICL		500000
 
+#define MAIN_CHARGER_STOP_ICL	50000
 enum smb_mode {
 	PARALLEL_MASTER = 0,
 	PARALLEL_SLAVE,
@@ -508,9 +513,7 @@ struct smb_charger {
 	int			voltage_min_uv;
 	int			voltage_max_uv;
 	int			pd_active;
-#ifdef CONFIG_PD_VERIFY
-int			pd_verifed;
-#endif
+	int			pd_verifed;
 	bool			pd_hard_reset;
 	bool			pr_lock_in_progress;
 	bool			pr_swap_in_progress;
@@ -639,6 +642,7 @@ int			pd_verifed;
 	int			last_wls_vout;
 	struct notifier_block notifier;
 	struct work_struct fb_notify_work;
+	bool			bq_input_suspend;
 
 };
 
@@ -848,6 +852,12 @@ int smblib_get_irq_status(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_qc3_main_icl_offset(struct smb_charger *chg, int *offset_ua);
 
+int smblib_get_prop_battery_charging_enabled(struct smb_charger *chg,
+				union power_supply_propval *val);
+int smblib_get_prop_battery_charging_limited(struct smb_charger *chg,
+					union power_supply_propval *val);
+int smblib_get_prop_battery_bq_input_suspend(struct smb_charger *chg,
+					union power_supply_propval *val);
 struct usbpd *smb_get_usbpd(void);
 int smblib_init(struct smb_charger *chg);
 int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable);
