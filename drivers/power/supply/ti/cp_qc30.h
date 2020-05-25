@@ -75,10 +75,10 @@ enum hvdcp3_type {
 #define HVDCP3_CLASS_B_BAT_CURRENT_MA			5400
 #define HVDCP3_CLASS_B_BUS_CURRENT_MA			2700
 #define HVDCP3_CLASS_A_BAT_CURRENT_MA			3600
-#define HVDCP3_CLASS_A_BUS_CURRENT_MA			2000
+#define HVDCP3_CLASS_A_BUS_CURRENT_MA			2100
 #define MAX_THERMAL_LEVEL			13
 /* jeita related */
-#define JEITA_WARM_THR			450
+#define JEITA_WARM_THR			480
 #define JEITA_COOL_NOT_ALLOW_CP_THR			100
 /*
  * add hysteresis for warm threshold to avoid flash
@@ -88,6 +88,7 @@ enum hvdcp3_type {
 #define JEITA_HYSTERESIS			20
 
 #define HIGH_CAPACITY_TRH			90
+
 
 struct flash2_policy {
 	int down_steps;
@@ -170,6 +171,7 @@ struct bq2597x {
 
 struct sw_charger {
 	bool charge_enabled;
+	bool charge_limited;
 };
 
 #define PM_STATE_LOG_MAX    32
@@ -179,7 +181,6 @@ typedef struct {
 	bool        sw_near_cv;
 	bool		sw_fc2_init_fail;
 	bool		bms_fastcharge_mode;
-	bool		reverse_mode;
 
 	uint16_t		ibus_lmt_curr;
 	pm_sm_state_t     state; //state machine
@@ -191,7 +192,6 @@ typedef struct {
 	int			usb_present;
 	int			ibat_now;
 	int			capacity;
-
 	struct bq2597x			bq2597x;
 	struct sw_charger			sw_chager;
 	struct votable		*fcc_votable;
@@ -200,22 +200,26 @@ typedef struct {
 	struct power_supply *sw_psy;
 	struct power_supply *usb_psy;
 	struct power_supply *bms_psy;
-	struct power_supply *wireless_psy;
 	/* jeita or thermal related */
-	int			warm_threshold_temp;
 	bool			jeita_triggered;
+	bool			batt_cell_volt_triggered;
 	bool			is_temp_out_fc2_range;
+	bool			slowly_charging;
 
     struct delayed_work	qc3_pm_work;
-	struct work_struct	disable_hvdcp3_work;
 } pm_t;
 
 
 struct sys_config {
 	uint16_t bat_volt_lp_lmt; /*bat volt loop limit*/
+	uint16_t ffc_bat_volt_lmt;
 	uint16_t bat_curr_lp_lmt;
 	uint16_t bus_volt_lp_lmt;
 	uint16_t bus_curr_lp_lmt;
+	uint16_t ibus_plus_deviation_val;
+	uint16_t ibus_minus_deviation_val;
+	uint16_t ibat_plus_deviation_val;
+	uint16_t ibat_minus_deviation_val;
 	int32_t fc2_taper_current;
 
 	struct flash2_policy flash2_policy;

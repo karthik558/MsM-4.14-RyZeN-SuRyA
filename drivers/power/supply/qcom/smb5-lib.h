@@ -83,6 +83,7 @@ enum print_reason {
 #define USB_SUSPEND_VOTER		"USB_SUSPEND_VOTER"
 #define CHARGER_TYPE_VOTER		"CHARGER_TYPE_VOTER"
 #define HDC_IRQ_VOTER			"HDC_IRQ_VOTER"
+#define ESR_WORK_VOTER			"ESR_WORK_VOTER"
 #define DETACH_DETECT_VOTER		"DETACH_DETECT_VOTER"
 #define CC_MODE_VOTER			"CC_MODE_VOTER"
 #define MAIN_FCC_VOTER			"MAIN_FCC_VOTER"
@@ -148,6 +149,14 @@ enum print_reason {
 #define QC3_CHARGER_ICL		500000
 
 #define MAIN_CHARGER_STOP_ICL	50000
+#define ESR_WORK_TIME_2S	2000
+#define ESR_WORK_TIME_180S	180000
+
+enum esr_work_status {
+	ESR_CHECK_FCC_NOLIMIT,
+	ESR_CHECK_FCC_LIMITED,
+};
+
 #define MAIN_CHG_SUSPEND_VOTER "MAIN_CHG_SUSPEND_VOTER"
 enum smb_mode {
 	PARALLEL_MASTER = 0,
@@ -517,6 +526,7 @@ struct smb_charger {
 	struct delayed_work	six_pin_batt_step_chg_work;
 	struct delayed_work	pr_swap_detach_work;
 	struct delayed_work	pr_lock_clear_work;
+	struct delayed_work	reduce_fcc_work;
 
 	struct alarm		lpd_recheck_timer;
 	struct alarm		moisture_protection_alarm;
@@ -657,6 +667,12 @@ struct smb_charger {
 
 	struct usbpd		*pd;
 	bool			use_bq_pump;
+	/* reduce fcc for esr cal*/
+	int			esr_work_status;
+	bool			cp_charge_enabled;
+	int			charge_type;
+	int			charge_status;
+	int			batt_health;
 	/* used for 6pin new battery step charge */
 	bool			six_pin_step_charge_enable;
 	bool			init_start_vbat_checked;

@@ -1967,24 +1967,26 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		chg->fcc_stepper_enable = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED:
-		if (val->intval == 0) {
-			if (chg->six_pin_step_charge_enable)
-				vote(chg->usb_icl_votable, MAIN_ICL_MIN_VOTER,
-							true, MAIN_ICL_MIN);
-			else
-				vote(chg->usb_icl_votable, MAIN_CHG_SUSPEND_VOTER,
-							true, 0);
-		} else {
-			if (chg->six_pin_step_charge_enable)
-				vote(chg->usb_icl_votable, MAIN_ICL_MIN_VOTER,
-							false, 0);
-			else
-				vote(chg->usb_icl_votable, MAIN_CHG_SUSPEND_VOTER,
-							false, 0);
+		if (chg->use_bq_pump) {
+			if (val->intval == 0) {
+				if (chg->six_pin_step_charge_enable)
+					vote(chg->usb_icl_votable, MAIN_ICL_MIN_VOTER,
+								true, MAIN_ICL_MIN);
+				else
+					vote(chg->usb_icl_votable, MAIN_CHG_SUSPEND_VOTER,
+								true, 0);
+			} else {
+				if (chg->six_pin_step_charge_enable)
+					vote(chg->usb_icl_votable, MAIN_ICL_MIN_VOTER,
+								false, 0);
+				else
+					vote(chg->usb_icl_votable, MAIN_CHG_SUSPEND_VOTER,
+								false, 0);
+			}
 		}
-
 		break;
 	case POWER_SUPPLY_PROP_BATTERY_CHARGING_LIMITED:
+		if (chg->use_bq_pump) {
 			if (val->intval == 0) {
 				vote(chg->usb_icl_votable, MAIN_CHG_VOTER,
 							false, MAIN_CHARGER_ICL);
@@ -1997,6 +1999,7 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 								true, MAIN_CHARGER_ICL);
 			}
 			rerun_election(chg->usb_icl_votable);
+		}
 		break;
 	default:
 		rc = -EINVAL;

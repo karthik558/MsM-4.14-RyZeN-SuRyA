@@ -164,14 +164,17 @@ static bool pd_disable_cp_by_jeita_status(struct usbpd_pm *pdpm)
 		return true;
 	} else {
 		if (batt_temp >= JEITA_WARM_THR && !pdpm->jeita_triggered) {
+			pr_err("jeita upper limit reached, batt_temp:%d\n", batt_temp);
 			pdpm->jeita_triggered = true;
 			return true;
 		} else if (batt_temp <= JEITA_COOL_NOT_ALLOW_CP_THR && !pdpm->jeita_triggered) {
+			pr_err("jeita lower limit reached, batt_temp:%d\n", batt_temp);
 			pdpm->jeita_triggered = true;
 			return true;
 		} else if ((batt_temp <= (JEITA_WARM_THR - JEITA_HYSTERESIS))
 				&& (batt_temp >= (JEITA_COOL_NOT_ALLOW_CP_THR + JEITA_HYSTERESIS))
 				&& pdpm->jeita_triggered) {
+			pr_err("jeita returned to normal, batt_temp:%d\n", batt_temp);
 			pdpm->jeita_triggered = false;
 			return false;
 		} else {
@@ -862,7 +865,7 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 
 		usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
 				pdpm->request_voltage * 1000, pdpm->request_current * 1000);
-		pr_debug("request_voltage:%d, request_current:%d\n",
+		pr_info("entry1 request_voltage:%d, request_current:%d\n",
 				pdpm->request_voltage, pdpm->request_current);
 
 		usbpd_pm_move_state(pdpm, PD_PM_STATE_FC2_ENTRY_2);
@@ -879,12 +882,16 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 			usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
 						pdpm->request_voltage * 1000,
 						pdpm->request_current * 1000);
+			pr_info("entry2 request_voltage:%d, request_current:%d\n",
+					pdpm->request_voltage, pdpm->request_current);
 		} else if (pdpm->cp.vbus_volt > (pdpm->cp.vbat_volt * 2 + BUS_VOLT_INIT_UP + 200)) {
 			tune_vbus_retry++;
 			pdpm->request_voltage -= STEP_MV;
 			usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
 						pdpm->request_voltage * 1000,
 						pdpm->request_current * 1000);
+			pr_info("entry2 request_voltage:%d, request_current:%d\n",
+					pdpm->request_voltage, pdpm->request_current);
 		} else {
 			pr_info("adapter volt tune ok, retry %d times\n", tune_vbus_retry);
 					usbpd_pm_move_state(pdpm, PD_PM_STATE_FC2_ENTRY_3);
