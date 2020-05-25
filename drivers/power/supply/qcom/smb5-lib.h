@@ -93,6 +93,7 @@ enum print_reason {
 /* used for bq charge pump solution */
 #define MAIN_CHG_VOTER			"MAIN_CHG_VOTER"
 #define HVDCP3_START_ICL_VOTER	"HVDCP3_START_ICL_VOTER"
+#define OTG_VOTER                       "OTG_VOTER"
 
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
@@ -123,6 +124,15 @@ enum print_reason {
 #define HVDCP3_START_ICL_VOTER	"HVDCP3_START_ICL_VOTER"
 
 #define ROLE_REVERSAL_DELAY_MS		2000
+/* six pin new battery step charge micros */
+#define MAX_STEP_ENTRIES			3
+#define MAX_COUNT_OF_IBAT_STEP			2
+
+#define STEP_CHG_DELAYED_MONITOR_MS			15000
+#define STEP_CHG_DELAYED_START_MS			10000
+#define VBAT_FOR_STEP_MIN_UV			4350000
+#define MAIN_ICL_MIN			100000
+#define MAIN_ICL_MIN_VOTER		"MAIN_ICL_MIN_VOTER"
 #define SIX_PIN_VFLOAT_VOTER		"SIX_PIN_VFLOAT_VOTER"
 #define WARM_VFLOAT_UV			4100000
 /* ffc related */
@@ -133,6 +143,7 @@ enum print_reason {
 #define QC3_CHARGER_ICL		500000
 
 #define MAIN_CHARGER_STOP_ICL	50000
+#define MAIN_CHG_SUSPEND_VOTER "MAIN_CHG_SUSPEND_VOTER"
 enum smb_mode {
 	PARALLEL_MASTER = 0,
 	PARALLEL_SLAVE,
@@ -327,6 +338,12 @@ enum icl_override_mode {
 /* EXTCON_USB and EXTCON_USB_HOST are mutually exclusive */
 static const u32 smblib_extcon_exclusive[] = {0x3, 0};
 
+/* six pin battery data struct */
+struct six_pin_step_data {
+	u32 vfloat_step_uv;
+	u32 fcc_step_ua;
+};
+
 struct smb_regulator {
 	struct regulator_dev	*rdev;
 	struct regulator_desc	rdesc;
@@ -492,6 +509,7 @@ struct smb_charger {
 	struct delayed_work	thermal_regulation_work;
 	struct delayed_work	usbov_dbc_work;
 	struct delayed_work	role_reversal_check;
+	struct delayed_work	six_pin_batt_step_chg_work;
 	struct delayed_work	pr_swap_detach_work;
 	struct delayed_work	pr_lock_clear_work;
 
@@ -634,6 +652,13 @@ struct smb_charger {
 
 	struct usbpd		*pd;
 	bool			use_bq_pump;
+	/* used for 6pin new battery step charge */
+	bool			six_pin_step_charge_enable;
+	bool			init_start_vbat_checked;
+	struct six_pin_step_data			six_pin_step_cfg[MAX_STEP_ENTRIES];
+	u32			start_step_vbat;
+	int			trigger_taper_count;
+	int			index_vfloat;
 
 	int			dcin_uv_count;
 	ktime_t			dcin_uv_last_time;

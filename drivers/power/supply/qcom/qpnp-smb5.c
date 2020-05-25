@@ -402,6 +402,64 @@ static int smb5_configure_internal_pull(struct smb_charger *chg, int type,
 	return rc;
 }
 
+static int read_step_chg_range_data_from_node(struct device_node *node,
+		const char *prop_str, struct six_pin_step_data *ranges)
+{
+	int rc = 0, length, per_tuple_length, tuples;
+
+	if (!node || !prop_str || !ranges) {
+		pr_err("Invalid parameters passed\n");
+		return -EINVAL;
+	}
+
+	rc = of_property_count_elems_of_size(node, prop_str, sizeof(u32));
+	if (rc < 0) {
+		pr_err("Count %s failed, rc=%d\n", prop_str, rc);
+		return rc;
+	}
+
+	length = rc;
+	per_tuple_length = sizeof(struct six_pin_step_data) / sizeof(u32);
+	if (length % per_tuple_length) {
+		pr_err("%s length (%d) should be multiple of %d\n",
+				prop_str, length, per_tuple_length);
+		return -EINVAL;
+	}
+	tuples = length / per_tuple_length;
+
+	if (tuples > MAX_STEP_ENTRIES) {
+		pr_err("too many entries(%d), only %d allowed\n",
+				tuples, MAX_STEP_ENTRIES);
+		return -EINVAL;
+	}
+
+	rc = of_property_read_u32_array(node, prop_str,
+			(u32 *)ranges, length);
+	if (rc) {
+		pr_err("Read %s failed, rc=%d\n", prop_str, rc);
+		return rc;
+	}
+
+	return rc;
+}
+
+static int smb5_charge_step_charge_init(struct smb_charger *chg,
+					struct device_node *node)
+{
+	int rc = 0;
+
+	rc = read_step_chg_range_data_from_node(node,
+			"mi,six-pin-step-chg-params",
+			chg->six_pin_step_cfg);
+	if (rc < 0) {
+		pr_debug("Read mi,six-pin-step-chg-params failed charger node, rc=%d\n",
+					rc);
+		chg->six_pin_step_charge_enable = false;
+	}
+
+	return rc;
+}
+
 #define MICRO_1P5A				1500000
 #define MICRO_P1A				100000
 #define MICRO_1PA				1000000
@@ -414,6 +472,7 @@ static int smb5_configure_internal_pull(struct smb_charger *chg, int type,
 static int smb5_parse_dt(struct smb5 *chip)
 {
 	struct smb_charger *chg = &chip->chg;
+	int i;
 	struct device_node *node = chg->dev->of_node;
 	int rc, byte_len, tmp;
 
@@ -443,6 +502,10 @@ static int smb5_parse_dt(struct smb5 *chip)
 
 	chg->use_bq_pump = of_property_read_bool(node,
 				"mi,use-bq-pump");
+
+	chg->six_pin_step_charge_enable = of_property_read_bool(node,
+				"mi,six-pin-step-chg");
+
 	chg->pd_not_supported = chg->pd_not_supported ||
 			of_property_read_bool(node, "qcom,usb-pd-disable");
 
@@ -688,6 +751,16 @@ static int smb5_parse_dt(struct smb5 *chip)
 			&tmp);
 	if (!rc && tmp < DCIN_ICL_MAX_UA)
 		chg->wls_icl_ua = tmp;
+
+	if (chg->six_pin_step_charge_enable) {
+		rc = smb5_charge_step_charge_init(chg, node);
+		if (!rc) {
+			for (i = 0; i < MAX_STEP_ENTRIES; i++)
+				pr_err("six-pin-step-chg-cfg: %duV, %duA\n",
+						chg->six_pin_step_cfg[i].vfloat_step_uv,
+						chg->six_pin_step_cfg[i].fcc_step_ua);
+		}
+	}
 
 	return 0;
 }
@@ -1884,13 +1957,22 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		chg->fcc_stepper_enable = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED:
-			if (val->intval == 0)
-				vote(chg->usb_icl_votable, MAIN_CHG_VOTER,
-							true, MAIN_CHARGER_STOP_ICL);
+		if (val->intval == 0) {
+			if (chg->six_pin_step_charge_enable)
+				vote(chg->usb_icl_votable, MAIN_ICL_MIN_VOTER,
+							true, MAIN_ICL_MIN);
 			else
-				vote(chg->usb_icl_votable, MAIN_CHG_VOTER,
+				vote(chg->usb_icl_votable, MAIN_CHG_SUSPEND_VOTER,
+							true, 0);
+		} else {
+			if (chg->six_pin_step_charge_enable)
+				vote(chg->usb_icl_votable, MAIN_ICL_MIN_VOTER,
 							false, 0);
-			rerun_election(chg->usb_icl_votable);
+			else
+				vote(chg->usb_icl_votable, MAIN_CHG_SUSPEND_VOTER,
+							false, 0);
+		}
+
 		break;
 	case POWER_SUPPLY_PROP_BATTERY_CHARGING_LIMITED:
 			if (val->intval == 0) {
