@@ -65,7 +65,7 @@ static const char * const power_supply_health_text[] = {
 };
 
 static const char * const power_supply_technology_text[] = {
-	"Unknown", "NiMH", "Li-poly", "Li-poly", "LiFe", "NiCd",
+	"Unknown", "NiMH", "Li-ion", "Li-poly", "LiFe", "NiCd",
 	"LiMn"
 };
 

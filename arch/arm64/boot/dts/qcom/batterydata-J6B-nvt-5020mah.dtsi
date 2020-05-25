@@ -49,7 +49,7 @@ qcom,j6b-nvt-5020mah {
 
 	qcom,fcc1-temp-lut {
 		qcom,lut-col-legend = <0 10 25 40 50>;
-		qcom,lut-data = <3191 3260 5160 3354 3366>;
+		qcom,lut-data = <3191 3260 3320 3354 3366>;
 	};
 
 	qcom,fcc2-temp-lut {

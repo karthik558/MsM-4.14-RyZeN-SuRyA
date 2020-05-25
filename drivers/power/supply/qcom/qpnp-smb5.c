@@ -1699,9 +1699,6 @@ static enum power_supply_property smb5_batt_props[] = {
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
 	POWER_SUPPLY_PROP_RECHARGE_SOC,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
-	//begin for the total capacity of batt in  2020.05.25
-	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
-	//end for the total capacity of batt in  2020.05.25
 	POWER_SUPPLY_PROP_FORCE_RECHARGE,
 	POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE,
 	POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED,
@@ -1816,13 +1813,6 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_DP_DM:
 		val->intval = chg->pulse_cnt;
 		break;
-	//begin for the total capacity of batt in  2020.05.25
-	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		rc =  smblib_get_prop_from_bms(chg,
-				POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,val);
-		val->intval = 5160;
-		break;
-	//end for the total capacity of batt in  2020.05.25
 	case POWER_SUPPLY_PROP_RERUN_AICL:
 		val->intval = 0;
 		break;
