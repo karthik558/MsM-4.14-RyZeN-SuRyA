@@ -210,7 +210,6 @@ struct usbpd_pm {
 	/* jeita or thermal related */
 	bool			jeita_triggered;
 	bool			is_temp_out_fc2_range;
-	bool			use_qcom_gauge;
 };
 
 struct pdpm_config {

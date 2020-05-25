@@ -652,7 +652,6 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 	} else {
 		ibus_lmt_change_timer = 0;
 	}
-	pr_info("ibus_limit:%d\n", ibus_limit);
 
 	/* battery voltage loop*/
 	if (pdpm->cp.vbat_volt > pm_config.bat_volt_lp_lmt)
@@ -661,13 +660,10 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 		step_vbat = pm_config.fc2_steps;;
 
 	/* battery charge current loop*/
-	if (!pdpm->use_qcom_gauge) {
-		if (pdpm->cp.ibat_curr < curr_fcc_limit)
-			step_ibat = pm_config.fc2_steps;
-		else if (pdpm->cp.ibat_curr > curr_fcc_limit + 50)
-			step_ibat = -pm_config.fc2_steps;
-		pr_info("step_ibat:%d\n", step_ibat);
-	}
+	if (pdpm->cp.ibat_curr < curr_fcc_limit)
+		step_ibat = pm_config.fc2_steps;
+	else if (pdpm->cp.ibat_curr > curr_fcc_limit + 50)
+		step_ibat = -pm_config.fc2_steps;
 
 	/* bus current loop*/
 	ibus_total = pdpm->cp.ibus_curr;
@@ -691,18 +687,8 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 	else
 		step_bat_reg = pm_config.fc2_steps;
 
-	pr_info("step_bat_reg:%d\n", step_bat_reg);
-
-	/*
-	 * As qcom gauge ibat changes every 1 second,
-	 * so do not use step_ibat for qcom gauge project
-	 * such as J2 & J11
-	 */
-	if (!pdpm->use_qcom_gauge)
-		sw_ctrl_steps = min(min(step_vbat, step_ibus), step_ibat);
-	else
-		sw_ctrl_steps = min(step_vbat, step_ibus);
-
+	pr_debug("step_bat_reg:%d\n", step_bat_reg);
+	sw_ctrl_steps = min(min(step_vbat, step_ibus), step_ibat);
 	sw_ctrl_steps = min(sw_ctrl_steps, step_bat_reg);
 
 	/* hardware alarm loop */
@@ -1232,9 +1218,6 @@ static int pd_policy_parse_dt(struct usbpd_pm *pdpm)
 			"mi,pd-ffc-bat-volt-max", &pdpm->ffc_bat_volt_max);
 	pr_info("pdpm->ffc_bat_volt_max:%d\n",
 				pdpm->ffc_bat_volt_max);
-
-	pdpm->use_qcom_gauge = of_property_read_bool(node,
-				"mi,use-qcom-gauge");
 
 	return rc;
 }

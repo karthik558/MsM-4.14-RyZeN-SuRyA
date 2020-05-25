@@ -2489,6 +2489,17 @@ int smblib_get_prop_battery_bq_input_suspend(struct smb_charger *chg,
 	return 0;
 }
 
+int smblib_get_batt_current_now(struct smb_charger *chg,
+					union power_supply_propval *val)
+{
+	int rc;
+
+	rc = smblib_get_prop_from_bms(chg,
+			POWER_SUPPLY_PROP_CURRENT_NOW, val);
+
+	return rc;
+}
+
 static int smblib_get_batt_voltage_now(struct smb_charger *chg,
 					union power_supply_propval *val)
 {
@@ -5598,6 +5609,7 @@ static void smblib_handle_sdp_enumeration_done(struct smb_charger *chg,
 		   rising ? "rising" : "falling");
 }
 
+
 #define APSD_EXTENDED_TIMEOUT_MS	400
 /* triggers when HVDCP 3.0 authentication has finished */
 static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
@@ -6850,6 +6862,8 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 	int rc = 0;
 	int input_present;
 	int main_charge_type;
+	int interval_ms = STEP_CHG_DELAYED_MONITOR_MS;
+	int fcc_ua = 0, ibat_ua = 0, capacity = 0;
 	union power_supply_propval pval = {0, };
 
 	rc = smblib_is_input_present(chg, &input_present);
@@ -6857,8 +6871,18 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 		return;
 
 	pr_err("input_present: %d\n", input_present);
-	if (input_present == INPUT_NOT_PRESENT)
+	if (input_present == INPUT_NOT_PRESENT) {
+		chg->init_start_vbat_checked = false;
+		chg->trigger_taper_count = 0;
+		chg->index_vfloat = 0;
+		if (is_client_vote_enabled(chg->fv_votable,
+						SIX_PIN_VFLOAT_VOTER))
+			vote(chg->fv_votable, SIX_PIN_VFLOAT_VOTER, false, 0);
+		if (is_client_vote_enabled(chg->fcc_votable,
+						SIX_PIN_VFLOAT_VOTER))
+			vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER, false, 0);
 		return;
+	}
 
 	if (chg->start_step_vbat >= VBAT_FOR_STEP_MIN_UV) {
 		pr_err("start step vbat is too high, no need do step charge\n");
@@ -6884,7 +6908,45 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 	main_charge_type = pval.intval;
 	pr_err("main_charge_type: %d\n", main_charge_type);
 
-	if (main_charge_type == POWER_SUPPLY_CHARGE_TYPE_TAPER)
+	/*
+	 * Add capacity compare to optimize cool charge  switch to
+	 * normal charge step too early issue, if capacity is below 40,
+	 * do not switch to next step.
+	 */
+	rc = smblib_get_prop_batt_capacity(chg, &pval);
+	if (rc < 0) {
+		pr_err("Couldn't get batt charge type rc=%d\n", rc);
+		return;
+	}
+	capacity = pval.intval;
+
+	if (main_charge_type == POWER_SUPPLY_CHARGE_TYPE_TAPER
+			&& capacity > TAPER_BATT_CAPACITY_THR) {
+		fcc_ua = get_effective_result(chg->fcc_votable)
+							- TAPER_DECREASE_FCC_UA;
+		pr_err("taper from main charger, reducing FCC to %duA\n",
+				fcc_ua);
+
+		if (fcc_ua < MIN_TAPER_FCC_THR_UA)
+			goto out;
+
+		vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER, true, fcc_ua);
+	}
+
+	rc = smblib_get_batt_current_now(chg, &pval);
+	if (rc < 0) {
+		pr_err("Couldn't get ibat from bms rc=%d\n", rc);
+		return;
+	}
+
+	ibat_ua = - pval.intval;
+	pr_err("ibat_ua: %d\n", ibat_ua);
+
+	if (main_charge_type == POWER_SUPPLY_CHARGE_TYPE_TAPER
+			&& (capacity > TAPER_BATT_CAPACITY_THR)
+			&& (chg->index_vfloat < (MAX_STEP_ENTRIES - 1))
+			&& (ibat_ua <= (chg->six_pin_step_cfg[chg->index_vfloat + 1].fcc_step_ua
+					+ TAPER_IBAT_TRH_HYS_UA)))
 		chg->trigger_taper_count++;
 	else
 		chg->trigger_taper_count = 0;
@@ -6892,18 +6954,23 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 	if (chg->trigger_taper_count >= MAX_COUNT_OF_IBAT_STEP) {
 		chg->index_vfloat++;
 		chg->trigger_taper_count = 0;
+		if (chg->index_vfloat >= MAX_STEP_ENTRIES)
+			chg->index_vfloat = MAX_STEP_ENTRIES - 1;
 		if (chg->index_vfloat < MAX_STEP_ENTRIES) {
 			vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER,
 					true, chg->six_pin_step_cfg[chg->index_vfloat].fcc_step_ua);
 			vote(chg->fv_votable, SIX_PIN_VFLOAT_VOTER,
 					true, chg->six_pin_step_cfg[chg->index_vfloat].vfloat_step_uv);
 		}
-		if (chg->index_vfloat >= MAX_STEP_ENTRIES)
-			chg->index_vfloat = MAX_STEP_ENTRIES - 1;
 	}
 
+out:
+	if (main_charge_type == POWER_SUPPLY_CHARGE_TYPE_TAPER)
+		interval_ms = STEP_CHG_DELAYED_QUICK_MONITOR_MS;
+	else
+		interval_ms = STEP_CHG_DELAYED_MONITOR_MS;
 	schedule_delayed_work(&chg->six_pin_batt_step_chg_work,
-				msecs_to_jiffies(STEP_CHG_DELAYED_MONITOR_MS));
+				msecs_to_jiffies(interval_ms));
 }
 
 #define USB_OV_DBC_PERIOD_MS		1000
