@@ -796,7 +796,9 @@ static const struct file_operations nfc_dev_fops = {
 	.compat_ioctl = nfc_compat_ioctl
 #endif
 };
-
+/*HMI_700_A01-395,2020-05-26,wanglixiang.*/
+/*Modify to nfc VDD(SIM_pmu_X) signal to be powered on when ENsignal is low*/
+#if 0
 /* Check for availability of NQ_ NFC controller hardware */
 static int nfcc_hw_check(struct i2c_client *client, struct nqx_dev *nqx_dev)
 {
@@ -1075,6 +1077,7 @@ done:
 
 	return ret;
 }
+#endif
 
 /*
  * Routine to enable clock.
@@ -1258,12 +1261,11 @@ static int nqx_probe(struct i2c_client *client,
 		"%s: nfc reset gpio not provided\n", __func__);
 		goto err_mem;
 	}
-
-	if (gpio_is_valid(platform_data->irq_gpio)) {
+   if (gpio_is_valid(platform_data->irq_gpio)) {
 		r = gpio_request(platform_data->irq_gpio, "nfc_irq_gpio");
-		if (r) {
-			dev_err(&client->dev, "%s: unable to request nfc irq gpio [%d]\n",
-				__func__, platform_data->irq_gpio);
+        if (r) {
+            dev_err(&client->dev, "%s: unable to request nfc irq gpio [%d]\n",
+                    __func__, platform_data->irq_gpio);
 			goto err_en_gpio;
 		}
 		r = gpio_direction_input(platform_data->irq_gpio);
@@ -1408,7 +1410,9 @@ static int nqx_probe(struct i2c_client *client,
 		goto err_request_irq_failed;
 	}
 	nqx_disable_irq(nqx_dev);
-
+    /*HMI_700_A01-395,2020-05-26,wanglixiang.*/
+    /*Modify to nfc VDD(SIM_pmu_X) signal to be powered on when ENsignal is low*/
+    #if 0
 	/*
 	 * To be efficient we need to test whether nfcc hardware is physically
 	 * present before attempting further hardware initialisation.
@@ -1421,6 +1425,7 @@ static int nqx_probe(struct i2c_client *client,
 		/* We don't think there is hardware switch NFC OFF */
 		goto err_request_hw_check_failed;
 	}
+    #endif
 
 	/* Register reboot notifier here */
 	r = register_reboot_notifier(&nfcc_notifier);
@@ -1582,7 +1587,10 @@ static struct i2c_driver nqx = {
 static int nfcc_reboot(struct notifier_block *notifier, unsigned long val,
 			  void *v)
 {
-	gpio_set_value(disable_ctrl, 1);
+     /*HMI_700_A01-395,2020-05-26,wanglixiang.*/
+     /*nfc driver nfcc_reboot()can turn off ven(NFC_ENABLE)*/
+	//gpio_set_value(disable_ctrl, 1);
+	gpio_set_value(disable_ctrl, 0);
 	return NOTIFY_OK;
 }
 
