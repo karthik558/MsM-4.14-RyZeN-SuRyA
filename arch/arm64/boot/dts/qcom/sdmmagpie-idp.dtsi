@@ -436,6 +436,7 @@
 					4440000 5300000
 					4480000 3900000>;
 	mi,six-pin-step-chg;
+	mi,use-bq-pump;
 };
 
 &pm6150_gpios {

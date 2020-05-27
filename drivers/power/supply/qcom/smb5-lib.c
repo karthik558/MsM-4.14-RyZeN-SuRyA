@@ -6234,7 +6234,9 @@ static void typec_src_removal(struct smb_charger *chg)
 		chg->index_vfloat = 0;
 		vote(chg->fv_votable, SIX_PIN_VFLOAT_VOTER, false, 0);
 		vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER, false, 0);
++		vote(chg->fcc_votable, DYN_ADJ_FCC_VOTER, false, 0);
 		vote(chg->usb_icl_votable, MAIN_ICL_MIN_VOTER, false, 0);
+		cancel_delayed_work_sync(&chg->six_pin_batt_step_chg_work);
 	}
 
 	chg->chg_param.forced_main_fcc = 0;
@@ -6981,6 +6983,30 @@ static int smblib_get_step_vfloat_index(struct smb_charger *chg,
 	return i;
 }
 
+static void smblib_dynamic_adjust_fcc(struct smb_charger *chg)
+{
+	int rc = 0;
+	int batt_current_now, current_fcc;
+	union power_supply_propval pval = {0, };
+
+	current_fcc = get_effective_result_locked(chg->fcc_votable);
+	if ((chg->index_vfloat) || (current_fcc < DYN_ADJ_FCC_MIN_UA))
+		return;
+
+	rc = smblib_get_prop_from_bms(chg, POWER_SUPPLY_PROP_CURRENT_NOW, &pval);
+	if (rc < 0) {
+		pr_err("Couldn't get batt current now rc=%d\n", rc);
+		return;
+	}
+	batt_current_now = pval.intval * (-1);
+
+	if (batt_current_now >= DYN_ADJ_FCC_MAX_UA)
+		vote(chg->fcc_votable, DYN_ADJ_FCC_VOTER, true,
+				(current_fcc - DYN_ADJ_FCC_OFFSET_UA));
+
+	pr_err("smblib_dynamic_adjust_fcc: batt_current_now = %d\n", batt_current_now);
+}
+
 static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 {
 	struct smb_charger *chg = container_of(work, struct smb_charger,
@@ -7026,6 +7052,10 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 				true, chg->six_pin_step_cfg[chg->index_vfloat].fcc_step_ua);
 		chg->init_start_vbat_checked = true;
 	}
+
+	/* When the battery current is greater than 6A,
+	adjust ffc to ensure that it does not exceed 6A */
+	smblib_dynamic_adjust_fcc(chg);
 
 	rc = smblib_get_prop_batt_charge_type(chg, &pval);
 	if (rc < 0) {
