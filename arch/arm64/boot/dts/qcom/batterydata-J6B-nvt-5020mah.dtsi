@@ -16,15 +16,12 @@ qcom,j6b-nvt-5020mah {
 	qcom,ffc-max-voltage-uv = <4480000>;
 	//qcom,fg-cc-cv-threshold-uv = <4450000>;
 	qcom,fastchg-current-ma = <6000>;
-	qcom,batt-id-kohm = <330>;
+	qcom,batt-id-kohm = <100>;
 	qcom,battery-beta = <4250>;
 	qcom,battery-therm-kohm = <100>;
 	qcom,battery-type = "j6b-nvt-5020mah";
 	qcom,qg-batt-profile-ver = <100>;
-	qcom,nom-batt-capacity-mah = <5160>;
 	mi,six-pin-battery;
-	mi,use-bq-pump;
-	mi,ffc-iterm-change-by-temp;
 
 	qcom,jeita-fcc-ranges = <0  50   1000000
 				51  100  2500000
@@ -35,7 +32,7 @@ qcom,j6b-nvt-5020mah {
 	qcom,jeita-fv-ranges = <0   50   4450000
 				51  100  4450000
 				101 150  4450000
-				151 450  4450000
+				151 450  4480000
 				451 580  4100000>;
 
 	/* COOL = 10 degc, WARM = 45 degC */

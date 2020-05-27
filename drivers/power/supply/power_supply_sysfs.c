@@ -310,7 +310,6 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(charge_enabled),
 	POWER_SUPPLY_ATTR(set_ship_mode),
 	POWER_SUPPLY_ATTR(real_type),
-	POWER_SUPPLY_ATTR(hvdcp3_type),
 	POWER_SUPPLY_ATTR(charge_now_raw),
 	POWER_SUPPLY_ATTR(charge_now_error),
 	POWER_SUPPLY_ATTR(capacity_raw),
@@ -398,7 +397,6 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(batt_full_current),
 	POWER_SUPPLY_ATTR(battery_charging_limited),
 	POWER_SUPPLY_ATTR(bq_input_suspend),
-
 	POWER_SUPPLY_ATTR(recharge_soc),
 	POWER_SUPPLY_ATTR(hvdcp_opti_allowed),
 	POWER_SUPPLY_ATTR(fastcharge_mode),
@@ -444,6 +442,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(cp_ilim),
 	POWER_SUPPLY_ATTR(irq_status),
 	POWER_SUPPLY_ATTR(parallel_output_mode),
+	POWER_SUPPLY_ATTR(ffc_chg_term_current),
 	/* Bq charge pump properties */
 	POWER_SUPPLY_ATTR(ti_battery_present),
 	POWER_SUPPLY_ATTR(ti_vbus_present),
@@ -458,7 +457,6 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(ti_fault_status),
 	POWER_SUPPLY_ATTR(ti_reg_status),
 	POWER_SUPPLY_ATTR(ti_set_bus_protection_for_qc3),
-	POWER_SUPPLY_ATTR(ffc_chg_term_current),
       /*POWER_SUPPLY_ATTR(fastcharge_mode),
 	POWER_SUPPLY_ATTR(dp_dm_bq),
 	POWER_SUPPLY_ATTR(pd_authentication),

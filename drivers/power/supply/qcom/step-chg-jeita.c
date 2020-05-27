@@ -59,10 +59,6 @@ struct step_chg_info {
 	bool			vbat_avg_based_step_chg;
 	bool			batt_missing;
 	bool			taper_fcc;
-	bool			six_pin_battery;
-	bool			use_bq_pump;
-	bool			ffc_iterm_change_by_temp;
-	bool			fcc_limited_by_soc;
 	int			jeita_fcc_index;
 	int			jeita_fv_index;
 	int			step_index;
@@ -368,14 +364,6 @@ static int get_step_chg_jeita_setting_from_profile(struct step_chg_info *chip)
 		chip->sw_jeita_cfg_valid = false;
 	}
 
-	chip->six_pin_battery =
-		of_property_read_bool(profile_node, "mi,six-pin-battery");
-	chip->use_bq_pump =
-		of_property_read_bool(profile_node, "mi,use-bq-pump");
-	chip->ffc_iterm_change_by_temp =
-		of_property_read_bool(profile_node, "mi,ffc-iterm-change-by-temp");
-	chip->fcc_limited_by_soc =
-		of_property_read_bool(profile_node, "mi,fcc-limited-by-soc");
 	return rc;
 }
 
@@ -425,7 +413,7 @@ reschedule:
 
 }
 
-int get_val(struct range_data *range, int hysteresis, int current_index,
+static int get_val(struct range_data *range, int hysteresis, int current_index,
 		int threshold,
 		int *new_index, int *val)
 {
@@ -480,14 +468,6 @@ int get_val(struct range_data *range, int hysteresis, int current_index,
 		*val = range[*new_index].value;
 	}
 
-	if (threshold < range[0].low_threshold) {
-		*new_index = 0;
-		*val = range[*new_index].value;
-	} else if (threshold > range[MAX_STEP_CHG_ENTRIES - 1].low_threshold) {
-		*new_index = MAX_STEP_CHG_ENTRIES - 1;
-		*val = range[*new_index].value;
-	}
-
 	/*
 	 * If we don't have a current_index return this
 	 * newfound value. There is no hysterisis from out of range
@@ -521,7 +501,6 @@ int get_val(struct range_data *range, int hysteresis, int current_index,
 	}
 	return 0;
 }
-EXPORT_SYMBOL(get_val);
 
 #define TAPERED_STEP_CHG_FCC_REDUCTION_STEP_MA		50000 /* 50 mA */
 static void taper_fcc_step_chg(struct step_chg_info *chip, int index,
@@ -691,6 +670,7 @@ static int handle_jeita(struct step_chg_info *chip)
 				chip->jeita_fcc_config->param.prop_name, rc);
 		return rc;
 	}
+	temp = pval.intval;
 
 	rc = get_val(chip->jeita_fcc_config->fcc_cfg,
 			chip->jeita_fcc_config->param.hysteresis,
@@ -717,45 +697,42 @@ static int handle_jeita(struct step_chg_info *chip)
 			&fv_uv);
 	if (rc < 0)
 		fv_uv = 0;
-	if (chip->ffc_iterm_change_by_temp) {
-		batt_temp = pval.intval;
-		rc = power_supply_get_property(chip->bms_psy,
-					POWER_SUPPLY_PROP_CAPACITY, &pval);
-		if (rc < 0) {
-			pr_err("Couldn't read batt_soc fail rc=%d\n", rc);
-			return rc;
-		}
-		batt_soc = pval.intval;
-		pr_info("%s:batt_soc=%d\n", __func__, batt_soc);
-		rc = power_supply_get_property(chip->bms_psy,
-				POWER_SUPPLY_PROP_FASTCHARGE_MODE, &pval);
-		pr_err("%s:fastcharge_mode=%d\n", __func__, pval.intval);
-		if (rc < 0) {
-			pr_err("Couldn't read fastcharge mode fail rc=%d\n", rc);
-			return rc;
-		}
-		if (pval.intval) {
-			if (batt_soc < 95) {
-				rc = power_supply_get_property(chip->batt_psy,
+
+	batt_temp = pval.intval;
+	rc = power_supply_get_property(chip->bms_psy,
+				POWER_SUPPLY_PROP_CAPACITY, &pval);
+	if (rc < 0) {
+		pr_err("Couldn't read batt_soc fail rc=%d\n", rc);
+		return rc;
+	}
+	batt_soc = pval.intval;
+	rc = power_supply_get_property(chip->bms_psy,
+			POWER_SUPPLY_PROP_FASTCHARGE_MODE, &pval);
+	pr_err("%s:fastcharge_mode=%d\n", __func__, pval.intval);
+	if (rc < 0) {
+		pr_err("Couldn't read fastcharge mode fail rc=%d\n", rc);
+		return rc;
+	}
+	if (pval.intval) {
+		if (batt_soc < 95) {
+			rc = power_supply_get_property(chip->batt_psy,
+					POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
+			chg_term_current = pval.intval;
+			if ((chg_term_current == FFC_LOW_TEMP_CHG_TERM_CURRENT)
+				&& (batt_temp > FFC_CHG_TERM_TEMP_THRESHOLD + 10)) {
+					chg_term_current = FFC_HIGH_TEMP_CHG_TERM_CURRENT;
+					pval.intval = chg_term_current;
+					rc = power_supply_set_property(chip->batt_psy,
 						POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
-				chg_term_current = pval.intval;
-				if ((chg_term_current == FFC_LOW_TEMP_CHG_TERM_CURRENT)
-					&& (batt_temp > FFC_CHG_TERM_TEMP_THRESHOLD + 10)) {
-						chg_term_current = FFC_HIGH_TEMP_CHG_TERM_CURRENT;
-						pval.intval = chg_term_current;
-						rc = power_supply_set_property(chip->batt_psy,
+			} else if ((chg_term_current == FFC_HIGH_TEMP_CHG_TERM_CURRENT)
+				&& (batt_temp < FFC_CHG_TERM_TEMP_THRESHOLD - 10)) {
+					chg_term_current = FFC_LOW_TEMP_CHG_TERM_CURRENT;
+					pval.intval = chg_term_current;
+					rc = power_supply_set_property(chip->batt_psy,
 							POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
-				} else if ((chg_term_current == FFC_HIGH_TEMP_CHG_TERM_CURRENT)
-					&& (batt_temp < FFC_CHG_TERM_TEMP_THRESHOLD - 10)) {
-						chg_term_current = FFC_LOW_TEMP_CHG_TERM_CURRENT;
-						pval.intval = chg_term_current;
-						rc = power_supply_set_property(chip->batt_psy,
-								POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
-				}
-				pr_info("batt_temp = %d, ffc_chg_term_current=%d\n", batt_temp, chg_term_current);
 			}
+			pr_info("batt_temp = %d, ffc_chg_term_current=%d\n", batt_temp, chg_term_current);
 		}
-		pval.intval = batt_temp;
 	}
 
 	chip->fv_votable = find_votable("FV");
@@ -772,49 +749,40 @@ static int handle_jeita(struct step_chg_info *chip)
 		chip->jeita_fcc_config->param.prop_name, pval.intval, fcc_ua, fv_uv);
 
 	/* set and clear fast charge mode when soft jeita trigger and clear */
-	if (chip->six_pin_battery) {
-		rc = power_supply_get_property(chip->usb_psy,
-				POWER_SUPPLY_PROP_PD_AUTHENTICATION, &pval);
-		if (rc < 0)
-			pr_err("Get fastcharge mode status failed, rc=%d\n", rc);
-		pd_authen_result = pval.intval;
+	rc = power_supply_get_property(chip->usb_psy,
+			POWER_SUPPLY_PROP_PD_AUTHENTICATION, &pval);
+	if (rc < 0)
+		pr_err("Get fastcharge mode status failed, rc=%d\n", rc);
+	pd_authen_result = pval.intval;
 
-		rc = power_supply_get_property(chip->usb_psy,
-				POWER_SUPPLY_PROP_HVDCP3_TYPE, &pval);
-		if (rc < 0)
-			pr_err("get hvdcp3_type failed, rc=%d\n", rc);
-
-		if ((pval.intval == HVDCP3_CLASS_B_27W)
-					|| (pd_authen_result == 1)) {
-			if ((temp >= BATT_WARM_THRESHOLD || temp <= BATT_COOL_THRESHOLD)
-						&& !fast_mode_dis) {
-				pr_err("temp:%d disable fastcharge mode\n", temp);
-				pval.intval = false;
-				rc = power_supply_set_property(chip->usb_psy,
-						POWER_SUPPLY_PROP_FASTCHARGE_MODE, &pval);
-				if (rc < 0) {
-					pr_err("Set fastcharge mode failed, rc=%d\n", rc);
-					return rc;
-				}
-				fast_mode_dis = true;
-			} else if ((temp < BATT_WARM_THRESHOLD - chip->jeita_fv_config->param.hysteresis)
-						&& (temp > BATT_COOL_THRESHOLD + chip->jeita_fv_config->param.hysteresis)
-							&& fast_mode_dis) {
-				pr_err("temp:%d enable fastcharge mode\n", temp);
-				pval.intval = true;
-				rc = power_supply_set_property(chip->usb_psy,
-						POWER_SUPPLY_PROP_FASTCHARGE_MODE, &pval);
-				if (rc < 0) {
-					pr_err("Set fastcharge mode failed, rc=%d\n", rc);
-					return rc;
-				}
-				fast_mode_dis = false;
+	if (pd_authen_result == 1) {
+		if ((temp >= BATT_WARM_THRESHOLD || temp <= BATT_COOL_THRESHOLD)
+					&& !fast_mode_dis) {
+			pr_err("temp:%d disable fastcharge mode\n", temp);
+			pval.intval = false;
+			rc = power_supply_set_property(chip->usb_psy,
+					POWER_SUPPLY_PROP_FASTCHARGE_MODE, &pval);
+			if (rc < 0) {
+				pr_err("Set fastcharge mode failed, rc=%d\n", rc);
+				return rc;
 			}
-		} else {
+			fast_mode_dis = true;
+		} else if ((temp < BATT_WARM_THRESHOLD - chip->jeita_fv_config->param.hysteresis)
+					&& (temp > BATT_COOL_THRESHOLD + chip->jeita_fv_config->param.hysteresis)
+						&& fast_mode_dis) {
+			pr_err("temp:%d enable fastcharge mode\n", temp);
+			pval.intval = true;
+			rc = power_supply_set_property(chip->usb_psy,
+					POWER_SUPPLY_PROP_FASTCHARGE_MODE, &pval);
+			if (rc < 0) {
+				pr_err("Set fastcharge mode failed, rc=%d\n", rc);
+				return rc;
+			}
 			fast_mode_dis = false;
 		}
+	} else {
+		fast_mode_dis = false;
 	}
-
 	/*
 	 * If JEITA float voltage is same as max-vfloat of battery then
 	 * skip any further VBAT specific checks.
@@ -887,7 +855,6 @@ static void status_change_work(struct work_struct *work)
 			struct step_chg_info, status_change_work.work);
 	int rc = 0;
 	union power_supply_propval prop = {0, };
-	static bool soc_vote_flag;
 
 	if (!is_batt_available(chip) || !is_bms_available(chip))
 		goto exit_work;
@@ -902,26 +869,6 @@ static void status_change_work(struct work_struct *work)
 	rc = handle_step_chg_config(chip);
 	if (rc < 0)
 		pr_err("Couldn't handle step rc = %d\n", rc);
-	if (chip->fcc_limited_by_soc) {
-		if (!chip->fcc_votable)
-			chip->fcc_votable = find_votable("FCC");
-		if (chip->fcc_votable) {
-			rc = power_supply_get_property(chip->bms_psy,
-					POWER_SUPPLY_PROP_CAPACITY, &prop);
-			if (rc < 0) {
-				pr_err("Couldn't get battery soc = %d\n", rc);
-				vote(chip->fcc_votable, SOC_CHG_VOTER, true, SOC_FCC_LIMIT);
-			} else if (prop.intval > 29) {
-				if (!soc_vote_flag) {
-					vote(chip->fcc_votable, SOC_CHG_VOTER, true, SOC_FCC_LIMIT);
-					soc_vote_flag = true;
-				}
-			} else if (soc_vote_flag) {
-				vote(chip->fcc_votable, SOC_CHG_VOTER, false, 0);
-				soc_vote_flag = false;
-			}
-		}
-	}
 
 	/* Remove stale votes on USB removal */
 	if (is_usb_available(chip)) {

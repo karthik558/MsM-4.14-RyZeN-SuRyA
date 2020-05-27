@@ -235,7 +235,6 @@ struct smb_dt_props {
 	int			auto_recharge_vbat_mv;
 	int			wd_bark_time;
 	int			wd_snarl_time_cfg;
-	int			batt_unverify_fcc_ua;
 	int			batt_profile_fcc_ua;
 	int			batt_profile_fv_uv;
 	int			term_current_src;
@@ -280,7 +279,7 @@ static const struct clamp_config clamp_levels[] = {
 };
 
 #define PMI632_MAX_ICL_UA	3000000
-#define PM6150_MAX_FCC_UA	3500000
+#define PM6150_MAX_FCC_UA	3000000
 static int smb5_chg_config_init(struct smb5 *chip)
 {
 	struct smb_charger *chg = &chip->chg;
@@ -511,6 +510,9 @@ static int smb5_parse_dt(struct smb5 *chip)
 
 	chg->lpd_disabled = of_property_read_bool(node, "qcom,lpd-disable");
 
+	chg->support_ffc = of_property_read_bool(node,
+				"mi,support-ffc");
+
 	rc = of_property_read_u32(node, "qcom,wd-bark-time-secs",
 					&chip->dt.wd_bark_time);
 	if (rc < 0 || chip->dt.wd_bark_time < MIN_WD_BARK_TIME)
@@ -528,13 +530,6 @@ static int smb5_parse_dt(struct smb5 *chip)
 			"qcom,fcc-max-ua", &chip->dt.batt_profile_fcc_ua);
 	if (rc < 0)
 		chip->dt.batt_profile_fcc_ua = -EINVAL;
-
-	chg->batt_profile_fcc_ua = chip->dt.batt_profile_fcc_ua;
-
-	rc = of_property_read_u32(node,
-			"mi,fcc-batt-unverify-ua", &chip->dt.batt_unverify_fcc_ua);
-	if (rc < 0)
-		chip->dt.batt_unverify_fcc_ua = -EINVAL;
 
 	rc = of_property_read_u32(node,
 				"qcom,fv-max-uv", &chip->dt.batt_profile_fv_uv);
@@ -1062,8 +1057,6 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_PD_AUTHENTICATION:
 		chg->pd_verifed = val->intval;
-		rc = vote(chg->usb_icl_votable, PD_VERIFED_VOTER,
-				chg->pd_verifed, PD_VERIFED_CURRENT);
 	case POWER_SUPPLY_PROP_FASTCHARGE_MODE:
 		power_supply_changed(chg->usb_psy);
 		if (chg->support_ffc) {
@@ -1903,6 +1896,9 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		chg->batt_profile_fcc_ua = val->intval;
 		vote(chg->fcc_votable, BATT_PROFILE_VOTER, true, val->intval);
 		break;
+	case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
+		smb5_config_iterm(chg, val->intval, 0);
+		break;
 	case POWER_SUPPLY_PROP_CURRENT_QNOVO:
 		vote(chg->pl_disable_votable, PL_QNOVO_VOTER,
 			val->intval != -EINVAL && val->intval < 2000000, 0);
@@ -2710,6 +2706,8 @@ static int smb5_init_hw(struct smb5 *chip)
 		smblib_get_charge_param(chg, &chg->param.fv,
 				&chg->batt_profile_fv_uv);
 
+	chg->batt_profile_fv_uv = chip->dt.batt_profile_fv_uv;
+
 	smblib_get_charge_param(chg, &chg->param.usb_icl,
 				&chg->default_icl_ua);
 	smblib_get_charge_param(chg, &chg->param.aicl_5v_threshold,
@@ -2850,20 +2848,17 @@ static int smb5_init_hw(struct smb5 *chip)
 		chip->dt.batt_profile_fcc_ua > 0, chip->dt.batt_profile_fcc_ua);
 	vote(chg->fv_votable, HW_LIMIT_VOTER,
 		chip->dt.batt_profile_fv_uv > 0, chip->dt.batt_profile_fv_uv);
-	vote(chg->fcc_votable, BATT_VERIFY_VOTER,
-		chip->dt.batt_unverify_fcc_ua > 0, chip->dt.batt_unverify_fcc_ua);
-
-	/* if support ffc, default vfloat set to 4.4V, only fast charge need override to 4.45V */
-	if (chg->support_ffc)
-		vote(chg->fv_votable, NON_FFC_VFLOAT_VOTER,
-			true, NON_FFC_VFLOAT_UV);
-
 	vote(chg->fcc_votable,
 		BATT_PROFILE_VOTER, chg->batt_profile_fcc_ua > 0,
 		chg->batt_profile_fcc_ua);
 	vote(chg->fv_votable,
 		BATT_PROFILE_VOTER, chg->batt_profile_fv_uv > 0,
 		chg->batt_profile_fv_uv);
+
+	/* if support ffc, default vfloat set to 4.45V, only fast charge need override to 4.48V */
+	if (chg->support_ffc)
+		vote(chg->fv_votable, NON_FFC_VFLOAT_VOTER,
+			true, NON_FFC_VFLOAT_UV);
 
 	/* Some h/w limit maximum supported ICL */
 	vote(chg->usb_icl_votable, HW_LIMIT_VOTER,

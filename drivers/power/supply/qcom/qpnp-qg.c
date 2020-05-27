@@ -213,15 +213,6 @@ static void qg_notify_charger(struct qpnp_qg *chip)
 	if (!chip->profile_loaded)
 		return;
 
-	prop.intval = chip->bp.float_volt_uv;
-	rc = power_supply_set_property(chip->batt_psy,
-			POWER_SUPPLY_PROP_VOLTAGE_MAX, &prop);
-	if (rc < 0) {
-		pr_err("Failed to set voltage_max property on batt_psy, rc=%d\n",
-			rc);
-		return;
-	}
-
 	prop.intval = chip->bp.fastchg_curr_ma * 1000;
 	rc = power_supply_set_property(chip->batt_psy,
 			POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX, &prop);
@@ -1682,7 +1673,6 @@ static const char *qg_get_battery_type(struct qpnp_qg *chip)
 #define BATT_MISSING_SOC	50
 #define EMPTY_SOC		0
 #define FULL_SOC		100
-static int qg_get_ffc_iterm_for_qg(struct qpnp_qg *chip);
 static int qg_get_battery_capacity(struct qpnp_qg *chip, int *soc)
 {
 	if (is_debug_batt_id(chip)) {
@@ -2002,63 +1992,55 @@ static int qg_setprop_batt_age_level(struct qpnp_qg *chip, int batt_age_level)
 	return rc;
 }
 
-
-#define FFC_BATT_FULL_CURRENT	1150000
-#define FFC_CHG_TERM_CURRENT	-830
-#define LOW_TEMP_FFC_BATT_FULL_CURRENT	1480000
-#define HIGH_TEMP_FFC_BATT_FULL_CURRENT	1610000
-#define	LOW_TEMP_FFC_CHG_TERM_CURRENT	-980
-#define	HIGH_TEMP_FFC_CHG_TERM_CURRENT	-1110
+#define LOW_TEMP_FFC_BATT_FULL_CURRENT		1000000
+#define HIGH_TEMP_FFC_BATT_FULL_CURRENT		1100000
+#define LOW_TEMP_FFC_CHG_TERM_CURRENT		-730
+#define HIGH_TEMP_FFC_CHG_TERM_CURRENT		-780
 static int qg_get_ffc_iterm_for_qg(struct qpnp_qg *chip)
 {
-	int rc = 0;
-	int ffc_qg_iterm = 0;
-	union power_supply_propval prop = {0, };
-	if (chip->dt.ffc_iterm_change_by_temp) {
-		if (is_batt_available(chip)) {
-			rc = power_supply_get_property(chip->batt_psy,
-				POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &prop);
-			if (rc < 0) {
-				pr_err("get charge_term_current fail!\n");
-				return LOW_TEMP_FFC_BATT_FULL_CURRENT;
-			}
-			if (prop.intval == LOW_TEMP_FFC_CHG_TERM_CURRENT) {
-				ffc_qg_iterm = LOW_TEMP_FFC_BATT_FULL_CURRENT;
-			} else if (prop.intval == HIGH_TEMP_FFC_CHG_TERM_CURRENT) {
-				ffc_qg_iterm = HIGH_TEMP_FFC_BATT_FULL_CURRENT;
-			} else {
-				pr_err("not matched chg_term_current = %d\n", prop.intval);
-				ffc_qg_iterm = LOW_TEMP_FFC_BATT_FULL_CURRENT;
-			}
-		} else {
-			pr_err("batt-psy not available\n");
-			ffc_qg_iterm = LOW_TEMP_FFC_BATT_FULL_CURRENT;
-		}
-	} else {
-		ffc_qg_iterm = FFC_BATT_FULL_CURRENT;
-	}
-	pr_info("ffc_batt_full_current=%d\n", ffc_qg_iterm);
+       int rc = 0;
+       int ffc_qg_iterm = 0;
+       union power_supply_propval prop = {0, };
+       if (is_batt_available(chip)) {
+               rc = power_supply_get_property(chip->batt_psy,
+                       POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &prop);
+               if (rc < 0) {
+                       pr_err("get charge_term_current fail!\n");
+                       return LOW_TEMP_FFC_BATT_FULL_CURRENT;
+               }
+               if (prop.intval == LOW_TEMP_FFC_CHG_TERM_CURRENT) {
+                       ffc_qg_iterm = LOW_TEMP_FFC_BATT_FULL_CURRENT;
+               } else if (prop.intval == HIGH_TEMP_FFC_CHG_TERM_CURRENT) {
+                       ffc_qg_iterm = HIGH_TEMP_FFC_BATT_FULL_CURRENT;
+               } else {
+                       pr_err("not matched chg_term_current = %d\n", prop.intval);
+                       ffc_qg_iterm = LOW_TEMP_FFC_BATT_FULL_CURRENT;
+               }
+       } else {
+               pr_err("batt-psy not available\n");
+               ffc_qg_iterm = LOW_TEMP_FFC_BATT_FULL_CURRENT;
+       }
 
-	return ffc_qg_iterm;
+       pr_info("ffc_batt_full_current=%d\n", ffc_qg_iterm);
+
+       return ffc_qg_iterm;
 }
 
 static int qg_get_ffc_iterm_for_chg(struct qpnp_qg *chip)
 {
-	int rc = 0, batt_temp = 0, ffc_chg_iterm = 0;
-	if (chip->dt.ffc_iterm_change_by_temp) {
-		rc = qg_get_battery_temp(chip, &batt_temp);
-		if (rc < 0){
-			pr_err("Failed to get battery-temp, rc = %d\n", rc);
-			return rc;
-		}
-		if (batt_temp < 350)
-			ffc_chg_iterm = LOW_TEMP_FFC_CHG_TERM_CURRENT;
-		else
-			ffc_chg_iterm = HIGH_TEMP_FFC_CHG_TERM_CURRENT;
-	} else {
-		ffc_chg_iterm = FFC_CHG_TERM_CURRENT;
-	}
-	return ffc_chg_iterm;
+       int rc = 0, batt_temp = 0, ffc_chg_iterm = 0;
+
+       rc = qg_get_battery_temp(chip, &batt_temp);
+       if (rc < 0){
+               pr_err("Failed to get battery-temp, rc = %d\n", rc);
+               return rc;
+       }
+       if (batt_temp < 350)
+               ffc_chg_iterm = LOW_TEMP_FFC_CHG_TERM_CURRENT;
+       else
+               ffc_chg_iterm = HIGH_TEMP_FFC_CHG_TERM_CURRENT;
+
+       return ffc_chg_iterm;
 }
 
 static int qg_psy_set_property(struct power_supply *psy,
@@ -2107,6 +2089,9 @@ static int qg_psy_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_BATT_AGE_LEVEL:
 		rc = qg_setprop_batt_age_level(chip, pval->intval);
 		break;
+	case POWER_SUPPLY_PROP_FASTCHARGE_MODE:
+		chip->fastcharge_mode_enabled = pval->intval;
+ 		break;
 	default:
 		break;
 	}
@@ -2287,12 +2272,15 @@ static int qg_psy_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SCALE_MODE_EN:
 		pval->intval = chip->fvss_active;
 		break;
-	case POWER_SUPPLY_PROP_FFC_CHG_TERMINATION_CURRENT:
-		pval->intval = qg_get_ffc_iterm_for_chg(chip);
-		break;
 	case POWER_SUPPLY_PROP_BATT_AGE_LEVEL:
 		pval->intval = chip->batt_age_level;
 		break;
+	case POWER_SUPPLY_PROP_FFC_CHG_TERMINATION_CURRENT:
+		pval->intval = qg_get_ffc_iterm_for_chg(chip);
+		break;
+	case POWER_SUPPLY_PROP_FASTCHARGE_MODE:
+		pval->intval = chip->fastcharge_mode_enabled;
+ 		break;
 	default:
 		pr_debug("Unsupported property %d\n", psp);
 		break;
@@ -2361,8 +2349,9 @@ static enum power_supply_property qg_psy_props[] = {
 	POWER_SUPPLY_PROP_POWER_AVG,
 	POWER_SUPPLY_PROP_POWER_NOW,
 	POWER_SUPPLY_PROP_SCALE_MODE_EN,
-	POWER_SUPPLY_PROP_FFC_CHG_TERMINATION_CURRENT,
 	POWER_SUPPLY_PROP_BATT_AGE_LEVEL,
+	POWER_SUPPLY_PROP_FFC_CHG_TERMINATION_CURRENT,
+	POWER_SUPPLY_PROP_FASTCHARGE_MODE,
 };
 
 static const struct power_supply_desc qg_psy_desc = {

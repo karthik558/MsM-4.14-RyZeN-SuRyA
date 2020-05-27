@@ -33,7 +33,6 @@ enum print_reason {
 	PR_PARALLEL	= BIT(3),
 	PR_OTG		= BIT(4),
 	PR_WLS		= BIT(5),
-	PR_OEM		= BIT(6),
 };
 
 #define DEFAULT_VOTER			"DEFAULT_VOTER"
@@ -87,7 +86,6 @@ enum print_reason {
 #define DETACH_DETECT_VOTER		"DETACH_DETECT_VOTER"
 #define CC_MODE_VOTER			"CC_MODE_VOTER"
 #define MAIN_FCC_VOTER			"MAIN_FCC_VOTER"
-#define BATT_VERIFY_VOTER		"BATT_VERIFY_VOTER"
 #define DCIN_AICL_VOTER			"DCIN_AICL_VOTER"
 #define OVERHEAT_LIMIT_VOTER		"OVERHEAT_LIMIT_VOTER"
 #define PD_VERIFED_VOTER		"PD_VERIFED_VOTER"
@@ -99,8 +97,6 @@ enum print_reason {
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
 
-#define PD_UNVERIFED_CURRENT		4800000
-#define PD_UNVERIFED_VOLTAGE		4450000
 #define VBAT_TO_VRAW_ADC(v)		div_u64((u64)v * 1000000UL, 194637UL)
 
 #define ITERM_LIMITS_PMI632_MA		5000
@@ -119,7 +115,6 @@ enum print_reason {
 #define DCIN_ICL_MIN_UA			100000
 #define DCIN_ICL_MAX_UA			1500000
 #define DCIN_ICL_STEP_UA		100000
-#define PD_VERIFED_CURRENT			6000000
 
 /* used for bq charge pump solution */
 #define MAIN_CHG_VOTER			"MAIN_CHG_VOTER"
@@ -149,6 +144,7 @@ enum print_reason {
 /* ffc related */
 #define NON_FFC_VFLOAT_VOTER			"NON_FFC_VFLOAT_VOTER"
 #define NON_FFC_VFLOAT_UV			4450000
+#define PD_UNVERIFED_CURRENT		4800000
 /* used for bq charge pump solution */
 #define MAIN_CHARGER_ICL	2000000
 #define QC3_CHARGER_ICL		500000
@@ -449,7 +445,6 @@ struct smb_charger {
 	int			otg_delay_ms;
 	int			*weak_chg_icl_ua;
 	bool			pd_not_supported;
-	bool			batt_verified;
 
 	/* locks */
 	struct mutex		smb_lock;
@@ -515,7 +510,6 @@ struct smb_charger {
 	struct work_struct	jeita_update_work;
 	struct work_struct	moisture_protection_work;
 	struct work_struct	chg_termination_work;
-	struct work_struct	batt_verify_update_work;
 	struct work_struct	dcin_aicl_work;
 	struct delayed_work	ps_change_timeout_work;
 	struct delayed_work	clear_hdc_work;
@@ -640,6 +634,10 @@ struct smb_charger {
 	bool			apsd_ext_timeout;
 	bool			qc3p5_detected;
 
+	/* fast full charge related */
+	int 		chg_term_current_thresh_hi_from_dts;
+	bool			support_ffc;
+
 	/* workaround flag */
 	u32			wa_flags;
 	int			boost_current_ua;
@@ -688,8 +686,6 @@ struct smb_charger {
 
 	int			dcin_uv_count;
 	ktime_t			dcin_uv_last_time;
-	int			chg_term_current_thresh_hi_from_dts;
-	bool			support_ffc;
 	int			last_wls_vout;
 	struct notifier_block notifier;
 	struct work_struct fb_notify_work;

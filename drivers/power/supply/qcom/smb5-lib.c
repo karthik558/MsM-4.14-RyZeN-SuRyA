@@ -731,7 +731,7 @@ int smblib_set_charge_param(struct smb_charger *chg,
 		return rc;
 	}
 
-	smblib_dbg(chg, PR_OEM, "%s = %d (0x%02x)\n",
+	smblib_dbg(chg, PR_REGISTER, "%s = %d (0x%02x)\n",
 		   param->name, val_u, val_raw);
 
 	return rc;
@@ -769,7 +769,6 @@ int smblib_set_dc_suspend(struct smb_charger *chg, bool suspend)
 
 	return rc;
 }
-
 
 int smb5_config_iterm(struct smb_charger *chg, int hi_thresh, int low_thresh)
 {
@@ -844,7 +843,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 	union power_supply_propval pval = {0,};
 	int rc = 0;
 	int termi = -220;
-	int fastcharge_soc_thr;
+
 	if (!chg->bms_psy)
 		return 0;
 
@@ -864,15 +863,10 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 			POWER_SUPPLY_PROP_CAPACITY, &pval);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't get bms capacity:%d\n", rc);
-		return rc;
+		goto set_term;
 	}
 
-	if (chg->use_bq_pump)
-		fastcharge_soc_thr = 95;
-	else
-		fastcharge_soc_thr = 90;
-
-	if (enable && pval.intval >= fastcharge_soc_thr) {
+	if (enable && pval.intval >= 90) {
 		smblib_dbg(chg, PR_MISC, "soc:%d is more than 90"
 			"do not setfastcharge mode\n", pval.intval);
 		enable = false;
@@ -882,7 +876,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 					POWER_SUPPLY_PROP_TEMP, &pval);
 	if (rc < 0) {
 			smblib_err(chg, "Couldn't get bms capacity:%d\n", rc);
-			goto set_term;
+			return rc;
 	}
 
 	if (enable && (pval.intval >= 450 || pval.intval <= 150)) {
@@ -900,7 +894,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 	}
 
 	if (enable) {
-		/* ffc need clear 4.4V non_fcc_vfloat_voter first */
+		/* ffc need clear 4.45V non_fcc_vfloat_voter first */
 		vote(chg->fv_votable, NON_FFC_VFLOAT_VOTER, false, 0);
 		rc = power_supply_get_property(chg->bms_psy,
 				POWER_SUPPLY_PROP_FFC_CHG_TERMINATION_CURRENT, &pval);
@@ -922,9 +916,6 @@ set_term:
 
 	rc = vote(chg->fcc_votable, PD_VERIFED_VOTER,
 			!enable, PD_UNVERIFED_CURRENT);
-
-	rc = vote(chg->fv_votable, PD_VERIFED_VOTER,
-			!enable, PD_UNVERIFED_VOLTAGE);
 
 	pr_info("fastcharge mode:%d termi:%d\n", enable, termi);
 
@@ -1275,25 +1266,11 @@ static int smblib_notifier_call(struct notifier_block *nb,
 {
 	struct power_supply *psy = v;
 	struct smb_charger *chg = container_of(nb, struct smb_charger, nb);
-#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
-	int rc;
-	union power_supply_propval pval = {0,};
-#endif
 
 	if (!strcmp(psy->desc->name, "bms")) {
 		if (!chg->bms_psy)
 			chg->bms_psy = psy;
 		if (ev == PSY_EVENT_PROP_CHANGED) {
-#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
-			rc = power_supply_get_property(chg->bms_psy,
-					POWER_SUPPLY_PROP_AUTHENTIC, &pval);
-			if (rc < 0) {
-				pr_err("Couldn't get batt verify status rc=%d\n", rc);
-			}
-			chg->batt_verified = pval.intval;
-			pr_err("batt_verified =%d\n", chg->batt_verified);
-			schedule_work(&chg->batt_verify_update_work);
-#endif
 			schedule_work(&chg->bms_update_work);
 		}
 	}
@@ -2455,6 +2432,15 @@ int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 
 	stat = stat & BATTERY_CHARGER_STATUS_MASK;
 	val->intval = (stat == TERMINATE_CHARGE);
+
+	if (val->intval == 1) {
+		/*disable FFC when charge done*/
+		if (chg->support_ffc) {
+			if (smblib_get_fastcharge_mode(chg) == 1)
+				rc = smblib_set_fastcharge_mode(chg, false);
+		}
+	}
+
 	return 0;
 }
 
@@ -6298,6 +6284,12 @@ static void typec_src_removal(struct smb_charger *chg)
 	if (chg->use_extcon)
 		smblib_notify_device_mode(chg, false);
 
+	chg->typec_legacy = false;
+
+	pr_err("%s:", __func__);
+	if (chg->pd_verifed)
+		chg->pd_verifed = false;
+
 	if (chg->support_ffc) {
 		if (smblib_get_fastcharge_mode(chg) == 1)
 			smblib_set_fastcharge_mode(chg, false);
@@ -6305,11 +6297,6 @@ static void typec_src_removal(struct smb_charger *chg)
 		vote(chg->fv_votable, NON_FFC_VFLOAT_VOTER,
 				true, NON_FFC_VFLOAT_UV);
 	}
-
-	chg->typec_legacy = false;
-	pr_err("%s:", __func__);
-	if (chg->pd_verifed)
-		chg->pd_verifed = false;
 
 	del_timer_sync(&chg->apsd_timer);
 	chg->apsd_ext_timeout = false;
@@ -7024,6 +7011,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 	union power_supply_propval pval = {0, };
 
 	rc = smblib_is_input_present(chg, &input_present);
+	pr_err("input_present: %d\n", input_present);
 	if (rc < 0)
 		return;
 
@@ -7090,8 +7078,10 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 
 		if (fcc_ua < MIN_TAPER_FCC_THR_UA)
 			goto out;
-
-		vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER, true, fcc_ua);
+		if ((chg->index_vfloat < MAX_STEP_ENTRIES -1 ) &&
+			(fcc_ua > chg->six_pin_step_cfg[chg->
+			index_vfloat + 1].fcc_step_ua))
+			vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER, true, fcc_ua);
 	}
 
 	rc = smblib_get_batt_current_now(chg, &pval);
@@ -8033,14 +8023,6 @@ static void smblib_dual_role_check_work(struct work_struct *work)
 	mutex_unlock(&chg->dr_lock);
 	vote(chg->awake_votable, DR_SWAP_VOTER, false, 0);
 }
-static void smblib_batt_verify_update_work(struct work_struct *work)
-{
-	struct smb_charger *chg = container_of(work, struct smb_charger,
-			batt_verify_update_work);
-
-	if (chg->batt_verified)
-		vote(chg->fcc_votable, BATT_VERIFY_VOTER, false, 0);
-}
 
 static int smblib_create_votables(struct smb_charger *chg)
 {
@@ -8218,7 +8200,6 @@ int smblib_init(struct smb_charger *chg)
 	INIT_WORK(&chg->bms_update_work, bms_update_work);
 	INIT_WORK(&chg->pl_update_work, pl_update_work);
 	INIT_WORK(&chg->jeita_update_work, jeita_update_work);
-	INIT_WORK(&chg->batt_verify_update_work, smblib_batt_verify_update_work);
 	INIT_WORK(&chg->dcin_aicl_work, dcin_aicl_work);
 	INIT_DELAYED_WORK(&chg->clear_hdc_work, clear_hdc_work);
 	INIT_DELAYED_WORK(&chg->icl_change_work, smblib_icl_change_work);
@@ -8386,7 +8367,6 @@ int smblib_deinit(struct smb_charger *chg)
 		cancel_work_sync(&chg->bms_update_work);
 		cancel_work_sync(&chg->jeita_update_work);
 		cancel_work_sync(&chg->pl_update_work);
-		cancel_work_sync(&chg->batt_verify_update_work);
 		cancel_work_sync(&chg->dcin_aicl_work);
 		cancel_delayed_work_sync(&chg->clear_hdc_work);
 		cancel_delayed_work_sync(&chg->icl_change_work);
