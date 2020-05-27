@@ -27,6 +27,16 @@
 		#include "batterydata-J6B-sunwoda-5020mah.dtsi"
 	};
 
+        cp_qc30 {
+                compatible = "xiaomi,cp-qc30";
+                status = "ok";
+                mi,qc3-bat-volt-max = <4450>;
+                mi,qc3-ffc-bat-volt-max = <4480>;
+                mi,qc3-bat-curr-max = <5400>;
+                mi,qc3-bus-volt-max = <12000>;
+                mi,qc3-bus-curr-max = <2100>;
+        };
+
 	usbpd_pm {
 		compatible = "xiaomi,usbpd-pm";
 		status = "ok";
@@ -442,6 +452,7 @@
 					4480000 3900000>;
 	mi,six-pin-step-chg;
 	mi,use-bq-pump;
+	qcom,distinguish-qc-class-ab;
 };
 
 &pm6150_gpios {
@@ -517,41 +528,39 @@
 		//	pinctrl-names = "default";
 		//	pinctrl-0 = <&bq2597x_int_default>;
 
-		/*	ti,bq2597x,bat-ovp-disable;	*/
-			ti,bq2597x,bat-ovp-alarm-disable;	
-		/*	ti,bq2597x,bat-ocp-disable;	
-			ti,bq2597x,bat-ocp-alarm-disable; */
-			
-		/*	ti,bq2597x,bat-ucp-disable;	*/
+			/*ti,bq2597x,bat-ovp-disable;*/
+			ti,bq2597x,bat-ovp-alarm-disable;
+			ti,bq2597x,bat-ocp-disable;
+			ti,bq2597x,bat-ocp-alarm-disable;
+			ti,bq2597x,bat-ucp-alarm-disable;
+			ti,bq2597x,bat-ucp-disable;
 
-		/*	ti,bq2597x,bus-ovp-alarm-disable;	
-			ti,bq2597x,bus-ocp-disable;	
-			ti,bq2597x,bus-ocp-alarm-disable;	
+			/*ti,bq2597x,bus-ovp-alarm-disable;
+			ti,bq2597x,bus-ocp-disable;
+			ti,bq2597x,bus-ocp-alarm-disable;*/
+			ti,bq2597x,bat-therm-disable;
+			ti,bq2597x,bus-therm-disable;
+			ti,bq2597x,die-therm-disable;
 
-		*/			
-			ti,bq2597x,bat-therm-disable;	
-			ti,bq2597x,bus-therm-disable;	
-			ti,bq2597x,die-therm-disable;	
-
-			ti,bq2597x,bat-ovp-threshold = <4525>;
-			ti,bq2597x,bat-ovp-alarm-threshold = <4400>;
-			ti,bq2597x,bat-ocp-threshold = <8000>;
-			ti,bq2597x,bat-ocp-alarm-threshold = <7500>;
+			ti,bq2597x,bat-ovp-threshold = <4480>;
+			ti,bq2597x,bat-ovp-alarm-threshold = <4450>;
+			//ti,bq2597x,bat-ocp-threshold = <5000>;
+			//ti,bq2597x,bat-ocp-alarm-threshold = <4500>;
 
 			ti,bq2597x,bus-ovp-threshold = <12000>;
 			ti,bq2597x,bus-ovp-alarm-threshold = <11000>;
-			ti,bq2597x,bus-ocp-threshold = <3750>;
-			ti,bq2597x,bus-ocp-alarm-threshold = <3500>;
+			//ti,bq2597x,bus-ocp-threshold = <2200>;
+			//ti,bq2597x,bus-ocp-alarm-threshold = <2000>;
+			ti,bq2597x,bus-ocp-threshold = <3500>;
+			ti,bq2597x,bus-ocp-alarm-threshold = <3000>;
 
-			ti,bq2597x,bat-ucp-alarm-threshold = <2000>;
+			//ti,bq2597x,bat-ucp-alarm-threshold = <2000>;
 
 			ti,bq2597x,bat-therm-threshold = <0x15>;/*4.1%*/
 			ti,bq2597x,bus-therm-threshold = <0x15>;/*4.1%*/
-			ti,bq2597x,die-therm-threshold = <125>;
-
+			ti,bq2597x,die-therm-threshold = <145>;
 			ti,bq2597x,ac-ovp-threshold = <14>;
-			ti,bq2597x,sense-resistor-mohm = <5>;
- 
+			//ti,bq2597x,sense-resistor-mohm = <2>; 
 		};
 };
 /*
