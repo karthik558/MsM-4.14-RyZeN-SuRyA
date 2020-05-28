@@ -4276,7 +4276,11 @@ static int get_rp_based_dcp_current(struct smb_charger *chg, int typec_mode)
 	case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
 	/* fall through */
 	default:
-		rp_ua = DCP_CURRENT_UA;
+		if(chg->real_charger_type == POWER_SUPPLY_TYPE_USB_FLOAT)
+			rp_ua = FLOAT_CURRENT_UA;
+		else
+			rp_ua = DCP_CURRENT_UA;
+		break;
 	}
 
 	return rp_ua;
