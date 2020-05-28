@@ -3238,7 +3238,7 @@ static int qg_load_battery_profile(struct qpnp_qg *chip)
 					chip->profile_judge_done = true;
 				} else if ((pval.arrayval[0] == 'N') || (pval.arrayval[0] == 'A')) {
 					profile_node = of_batterydata_get_best_profile(chip->batt_node,
-						chip->batt_id_ohm / 1000, "j6b-nvt-5020mah");
+						chip->batt_id_ohm / 1000, "m703-pm7150b-atl-5160mah");
 					chip->profile_judge_done = true;
 				}
 			}
@@ -3247,7 +3247,7 @@ static int qg_load_battery_profile(struct qpnp_qg *chip)
 		if (chip->profile_judge_done == false) {
 			if (chip->profile_loaded == false) {
 				profile_node = of_batterydata_get_best_profile(chip->batt_node,
-						chip->batt_id_ohm / 1000, "j6b-nvt-5020mah");
+						chip->batt_id_ohm / 1000, "m703-pm7150b-atl-5160mah");
 			} else {
 				return 0;
 			}
