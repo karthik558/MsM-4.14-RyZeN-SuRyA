@@ -47,6 +47,9 @@ static const char * const power_supply_type_text[] = {
 	"USB_HVDCP", "USB_HVDCP_3", "USB_HVDCP_3P5", "Wireless", "USB_FLOAT",
 	"BMS", "Parallel", "Main", "Wipower", "USB_C_UFP", "USB_C_DFP",
 	"Charge_Pump",
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+	"Batt_Verify",
+#endif
 };
 
 static const char * const power_supply_status_text[] = {
@@ -349,6 +352,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(flash_trigger),
 	POWER_SUPPLY_ATTR(force_tlim),
 	POWER_SUPPLY_ATTR(dp_dm),
+	POWER_SUPPLY_ATTR(dp_dm_bq),
 	POWER_SUPPLY_ATTR(input_current_limited),
 	POWER_SUPPLY_ATTR(input_current_now),
 	POWER_SUPPLY_ATTR(charge_qnovo_enable),
@@ -398,7 +402,6 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(batt_full_current),
 	POWER_SUPPLY_ATTR(battery_charging_limited),
 	POWER_SUPPLY_ATTR(bq_input_suspend),
-
 	POWER_SUPPLY_ATTR(recharge_soc),
 	POWER_SUPPLY_ATTR(hvdcp_opti_allowed),
 	POWER_SUPPLY_ATTR(fastcharge_mode),
@@ -432,6 +435,8 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(apsd_rerun),
 	POWER_SUPPLY_ATTR(apsd_timeout),
 	/* Charge pump properties */
+	POWER_SUPPLY_ATTR(qc3p5_power_limit),
+	POWER_SUPPLY_ATTR(qc3p5_current_max),
 	POWER_SUPPLY_ATTR(cp_status1),
 	POWER_SUPPLY_ATTR(cp_status2),
 	POWER_SUPPLY_ATTR(cp_enable),
@@ -444,6 +449,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(cp_ilim),
 	POWER_SUPPLY_ATTR(irq_status),
 	POWER_SUPPLY_ATTR(parallel_output_mode),
+	POWER_SUPPLY_ATTR(ffc_chg_term_current),
 	/* Bq charge pump properties */
 	POWER_SUPPLY_ATTR(ti_battery_present),
 	POWER_SUPPLY_ATTR(ti_vbus_present),
@@ -458,7 +464,6 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(ti_fault_status),
 	POWER_SUPPLY_ATTR(ti_reg_status),
 	POWER_SUPPLY_ATTR(ti_set_bus_protection_for_qc3),
-	POWER_SUPPLY_ATTR(ffc_chg_term_current),
       /*POWER_SUPPLY_ATTR(fastcharge_mode),
 	POWER_SUPPLY_ATTR(dp_dm_bq),
 	POWER_SUPPLY_ATTR(pd_authentication),

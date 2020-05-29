@@ -675,7 +675,7 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 		ibus_total += pdpm->cp_sec.ibus_curr;
 
 	pr_info("ibus_limit:%d ibus:%d vbus:%d ibat:%d vbat:%d\n",
-			ibus_limit, ibus_total, pdpm->cp.vbus_volt, pdpm->cp.vbat_volt, pdpm->cp.ibat_curr);
+			ibus_limit, ibus_total, pdpm->cp.vbus_volt, pdpm->cp.ibat_curr, pdpm->cp.vbat_volt);
 
 	if (ibus_total < ibus_limit - 50)
 		step_ibus = pm_config.fc2_steps;

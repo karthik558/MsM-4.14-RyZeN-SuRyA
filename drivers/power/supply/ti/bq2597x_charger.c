@@ -135,7 +135,7 @@ do {											\
 		printk(KERN_ERR "[bq2597x-SLAVE]:%s:" fmt, __func__, ##__VA_ARGS__);	\
 	else										\
 		printk(KERN_ERR "[bq2597x-STANDALONE]:%s:" fmt, __func__, ##__VA_ARGS__);\
-} while(0);
+} while (0);
 
 #define bq_info(fmt, ...)								\
 do {											\
@@ -145,7 +145,7 @@ do {											\
 		printk(KERN_INFO "[bq2597x-SLAVE]:%s:" fmt, __func__, ##__VA_ARGS__);	\
 	else										\
 		printk(KERN_INFO "[bq2597x-STANDALONE]:%s:" fmt, __func__, ##__VA_ARGS__);\
-} while(0);
+} while (0);
 
 #define bq_dbg(fmt, ...)								\
 do {											\
@@ -155,9 +155,23 @@ do {											\
 		printk(KERN_DEBUG "[bq2597x-SLAVE]:%s:" fmt, __func__, ##__VA_ARGS__);	\
 	else										\
 		printk(KERN_DEBUG "[bq2597x-STANDALONE]:%s:" fmt, __func__, ##__VA_ARGS__);\
-} while(0);
+} while (0);
 
+enum hvdcp3_type {
+	HVDCP3_NONE = 0,
+	HVDCP3_CLASSA_18W,
+	HVDCP3_CLASSB_27W,
+	HVDCP3P5,
+};
 
+#define BUS_OVP_FOR_QC			10000
+#define BUS_OVP_ALARM_FOR_QC			9500
+#define BUS_OCP_FOR_QC_CLASS_A			3250
+#define BUS_OCP_ALARM_FOR_QC_CLASS_A			2000
+#define BUS_OCP_FOR_QC_CLASS_B			3750
+#define BUS_OCP_ALARM_FOR_QC_CLASS_B			2800
+#define BUS_OCP_FOR_QC3P5				3500
+#define BUS_OCP_ALARM_FOR_QC3P5					2500
 
 /*end*/
 
@@ -284,6 +298,11 @@ struct bq2597x {
 	struct power_supply_config psy_cfg;
 	struct power_supply *fc2_psy;
 };
+
+static int bq_debug_flag;
+module_param_named(
+	bq_debug_flag, bq_debug_flag, int, 0600
+);
 
 /************************************************************************/
 static int __bq2597x_read_byte(struct bq2597x *bq, u8 reg, u8 *data)
@@ -1157,6 +1176,26 @@ static int bq2597x_set_sense_resistor(struct bq2597x *bq, int r_mohm)
 	return ret;
 }
 
+static int bq2597x_set_ibus_ucp_thr(struct bq2597x *bq, int ibus_ucp_thr)
+{
+	int ret;
+	u8 val;
+
+	if (ibus_ucp_thr == 300)
+		val = BQ2597X_IBUS_UCP_RISE_300MA;
+	else if (ibus_ucp_thr == 500)
+		val = BQ2597X_IBUS_UCP_RISE_500MA;
+	else
+		return -EINVAL;
+
+	val <<= BQ2597X_IBUS_UCP_RISE_TH_SHIFT;
+
+	ret = bq2597x_update_bits(bq, BQ2597X_REG_2B,
+				BQ2597X_IBUS_UCP_RISE_TH_MASK,
+				val);
+	return ret;
+}
+
 static int bq2597x_enable_regulation(struct bq2597x *bq, bool enable)
 {
 	int ret;
@@ -1176,7 +1215,6 @@ static int bq2597x_enable_regulation(struct bq2597x *bq, bool enable)
 	return ret;
 
 }
-
 
 static int bq2597x_set_ss_timeout(struct bq2597x *bq, int timeout)
 {
@@ -1302,7 +1340,7 @@ static int bq2597x_get_work_mode(struct bq2597x *bq, int *mode)
 		*mode = BQ25970_ROLE_MASTER;
 	else if (val == BQ2597X_MS_SLAVE)
 		*mode = BQ25970_ROLE_SLAVE;
-	else 
+	else
 		*mode = BQ25970_ROLE_STDALONE;
 
 	bq_info("work mode:%s\n", *mode == BQ25970_ROLE_STDALONE ? "Standalone" :
@@ -1322,6 +1360,18 @@ static int bq2597x_detect_device(struct bq2597x *bq)
 	}
 
 	return ret;
+}
+
+static void bq2597x_dump_reg(struct bq2597x *bq);
+#define RUNNING_PERIOD_S	(60 * 1000)
+
+static void bq2597x_monitor_work(struct work_struct *work)
+{
+	struct bq2597x *bq = container_of(work, struct bq2597x,
+						monitor_work.work);
+	bq2597x_dump_reg(bq);
+	schedule_delayed_work(&bq->monitor_work,
+				msecs_to_jiffies(RUNNING_PERIOD_S));
 }
 
 static int bq2597x_parse_dt(struct bq2597x *bq, struct device *dev)
@@ -1370,7 +1420,7 @@ static int bq2597x_parse_dt(struct bq2597x *bq, struct device *dev)
 		bq_err("failed to read bat-ovp-alarm-threshold\n");
 		return ret;
 	}
-	ret = of_property_read_u32(np, "ti,bq2597x,bat-ocp-threshold",
+	/*ret = of_property_read_u32(np, "ti,bq2597x,bat-ocp-threshold",
 			&bq->cfg->bat_ocp_th);
 	if (ret) {
 		bq_err("failed to read bat-ocp-threshold\n");
@@ -1381,7 +1431,7 @@ static int bq2597x_parse_dt(struct bq2597x *bq, struct device *dev)
 	if (ret) {
 		bq_err("failed to read bat-ocp-alarm-threshold\n");
 		return ret;
-	}
+	}*/
 	ret = of_property_read_u32(np, "ti,bq2597x,bus-ovp-threshold",
 			&bq->cfg->bus_ovp_th);
 	if (ret) {
@@ -1406,12 +1456,12 @@ static int bq2597x_parse_dt(struct bq2597x *bq, struct device *dev)
 		bq_err("failed to read bus-ocp-alarm-threshold\n");
 		return ret;
 	}
-	ret = of_property_read_u32(np, "ti,bq2597x,bat-ucp-alarm-threshold",
+	/*ret = of_property_read_u32(np, "ti,bq2597x,bat-ucp-alarm-threshold",
 			&bq->cfg->bat_ucp_alm_th);
 	if (ret) {
 		bq_err("failed to read bat-ucp-alarm-threshold\n");
 		return ret;
-	}
+	}*/
 	ret = of_property_read_u32(np, "ti,bq2597x,bat-therm-threshold",
 			&bq->cfg->bat_therm_th);
 	if (ret) {
@@ -1438,12 +1488,12 @@ static int bq2597x_parse_dt(struct bq2597x *bq, struct device *dev)
 		return ret;
 	}
 
-	ret = of_property_read_u32(np, "ti,bq2597x,sense-resistor-mohm",
+	/*ret = of_property_read_u32(np, "ti,bq2597x,sense-resistor-mohm",
 			&bq->cfg->sense_r_mohm);
 	if (ret) {
 		bq_err("failed to read sense-resistor-mohm\n");
 		return ret;
-	}
+	}*/
 
 
 	return 0;
@@ -1561,9 +1611,38 @@ static int bq2597x_init_protection(struct bq2597x *bq)
 	return 0;
 }
 
+static int bq2597x_set_bus_protection(struct bq2597x *bq, int hvdcp3_type)
+{
+	/* just return now, to do later */
+	//return 0;
+
+	pr_err("hvdcp3_type: %d\n", hvdcp3_type);
+	if (hvdcp3_type == HVDCP3_CLASSA_18W) {
+		bq2597x_set_busovp_th(bq, BUS_OVP_FOR_QC);
+		bq2597x_set_busovp_alarm_th(bq, BUS_OVP_ALARM_FOR_QC);
+		bq2597x_set_busocp_th(bq, BUS_OCP_FOR_QC_CLASS_A);
+		bq2597x_set_busocp_alarm_th(bq, BUS_OCP_ALARM_FOR_QC_CLASS_A);
+	} else if (hvdcp3_type == HVDCP3_CLASSB_27W) {
+		bq2597x_set_busovp_th(bq, BUS_OVP_FOR_QC);
+		bq2597x_set_busovp_alarm_th(bq, BUS_OVP_ALARM_FOR_QC);
+		bq2597x_set_busocp_th(bq, BUS_OCP_FOR_QC_CLASS_B);
+		bq2597x_set_busocp_alarm_th(bq, BUS_OCP_ALARM_FOR_QC_CLASS_B);
+	} if (hvdcp3_type == HVDCP3P5) {
+		bq2597x_set_busovp_th(bq, BUS_OVP_FOR_QC);
+		bq2597x_set_busovp_alarm_th(bq, BUS_OVP_ALARM_FOR_QC);
+		bq2597x_set_busocp_th(bq, BUS_OCP_FOR_QC3P5);
+		bq2597x_set_busocp_alarm_th(bq, BUS_OCP_ALARM_FOR_QC3P5);
+	}else {
+		bq2597x_set_busovp_th(bq, bq->cfg->bus_ovp_th);
+		bq2597x_set_busovp_alarm_th(bq, bq->cfg->bus_ovp_alm_th);
+		bq2597x_set_busocp_th(bq, bq->cfg->bus_ocp_th);
+		bq2597x_set_busocp_alarm_th(bq, bq->cfg->bus_ocp_alm_th);
+	}
+	return 0;
+}
+
 static int bq2597x_init_adc(struct bq2597x *bq)
 {
-
 	bq2597x_set_adc_scanrate(bq, false);
 	bq2597x_set_adc_bits(bq, 13);
 	bq2597x_set_adc_average(bq, true);
@@ -1571,10 +1650,10 @@ static int bq2597x_init_adc(struct bq2597x *bq)
 	bq2597x_set_adc_scan(bq, ADC_VBUS, true);
 	bq2597x_set_adc_scan(bq, ADC_VOUT, false);
 	bq2597x_set_adc_scan(bq, ADC_VBAT, true);
-	bq2597x_set_adc_scan(bq, ADC_IBAT, true);
-	bq2597x_set_adc_scan(bq, ADC_TBUS, true);
-	bq2597x_set_adc_scan(bq, ADC_TBAT, true);
-	bq2597x_set_adc_scan(bq, ADC_TDIE, true);
+	bq2597x_set_adc_scan(bq, ADC_IBAT, false);
+	bq2597x_set_adc_scan(bq, ADC_TBUS, false);
+	bq2597x_set_adc_scan(bq, ADC_TBAT, false);
+	bq2597x_set_adc_scan(bq, ADC_TDIE, false);
 	bq2597x_set_adc_scan(bq, ADC_VAC, true);
 
 	bq2597x_enable_adc(bq, true);
@@ -1590,31 +1669,32 @@ static int bq2597x_init_int_src(struct bq2597x *bq)
 	 *	bq2597x_set_fault_int_mask for tsbus and tsbat alarm
 	 */
 	ret = bq2597x_set_alarm_int_mask(bq, ADC_DONE
-		/*			| BAT_UCP_ALARM */
+					| BAT_OCP_ALARM | BAT_UCP_ALARM
 					| BAT_OVP_ALARM);
 	if (ret) {
 		bq_err("failed to set alarm mask:%d\n", ret);
 		return ret;
 	}
-#if 0
-	ret = bq2597x_set_fault_int_mask(bq, TS_BUS_FAULT);
+//#if 0
+	ret = bq2597x_set_fault_int_mask(bq,
+			TS_BUS_FAULT | TS_DIE_FAULT | TS_BAT_FAULT | BAT_OCP_FAULT);
 	if (ret) {
 		bq_err("failed to set fault mask:%d\n", ret);
 		return ret;
 	}
-#endif
+//#endif
 	return ret;
 }
 
 static int bq2597x_init_regulation(struct bq2597x *bq)
 {
-	bq2597x_set_ibat_reg_th(bq, 300);
-	bq2597x_set_vbat_reg_th(bq, 100);
+	bq2597x_set_ibat_reg_th(bq, 200);
+	bq2597x_set_vbat_reg_th(bq, 50);
 
 	bq2597x_set_vdrop_deglitch(bq, 5000);
 	bq2597x_set_vdrop_th(bq, 400);
 
-	bq2597x_enable_regulation(bq, false);
+	bq2597x_enable_regulation(bq, true);
 
 	return 0;
 }
@@ -1623,8 +1703,8 @@ static int bq2597x_init_device(struct bq2597x *bq)
 {
 	bq2597x_enable_wdt(bq, false);
 
-
-	bq2597x_set_ss_timeout(bq, 0);
+	bq2597x_set_ss_timeout(bq, 100000);
+	bq2597x_set_ibus_ucp_thr(bq, 300);
 	bq2597x_set_sense_resistor(bq, bq->cfg->sense_r_mohm);
 
 	bq2597x_init_protection(bq);
@@ -1636,7 +1716,6 @@ static int bq2597x_init_device(struct bq2597x *bq)
 	return 0;
 }
 
-
 static int bq2597x_set_present(struct bq2597x *bq, bool present)
 {
 	bq->usb_present = present;
@@ -1645,7 +1724,6 @@ static int bq2597x_set_present(struct bq2597x *bq, bool present)
 		bq2597x_init_device(bq);
 	return 0;
 }
-
 
 static ssize_t bq2597x_show_registers(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -1716,7 +1794,8 @@ static enum power_supply_property bq2597x_charger_props[] = {
 	POWER_SUPPLY_PROP_TI_ALARM_STATUS,
 	POWER_SUPPLY_PROP_TI_FAULT_STATUS,
 	POWER_SUPPLY_PROP_TI_REG_STATUS,
-
+	POWER_SUPPLY_PROP_TI_SET_BUS_PROTECTION_FOR_QC3,
+	POWER_SUPPLY_PROP_MODEL_NAME,
 };
 
 static void bq2597x_check_alarm_status(struct bq2597x *bq);
@@ -1805,7 +1884,7 @@ static int bq2597x_charger_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_TI_ALARM_STATUS:
 
-		//bq2597x_check_alarm_status(bq);
+		bq2597x_check_alarm_status(bq);
 
 		val->intval = ((bq->bat_ovp_alarm << BAT_OVP_ALARM_SHIFT)
 			| (bq->bat_ocp_alarm << BAT_OCP_ALARM_SHIFT)
@@ -1818,7 +1897,7 @@ static int bq2597x_charger_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_TI_FAULT_STATUS:
-		//bq2597x_check_fault_status(bq);
+		bq2597x_check_fault_status(bq);
 
 		val->intval = ((bq->bat_ovp_fault << BAT_OVP_FAULT_SHIFT)
 			| (bq->bat_ocp_fault << BAT_OCP_FAULT_SHIFT)
@@ -1834,6 +1913,22 @@ static int bq2597x_charger_get_property(struct power_supply *psy,
 		val->intval = (bq->vbat_reg << VBAT_REG_STATUS_SHIFT) |
 				(bq->ibat_reg << IBAT_REG_STATUS_SHIFT);
 		break;
+	case POWER_SUPPLY_PROP_TI_SET_BUS_PROTECTION_FOR_QC3:
+		val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_MODEL_NAME:
+		ret = bq2597x_get_work_mode(bq, &bq->mode);
+		if (ret) {
+			val->strval = "unknown";
+		} else {
+			if (bq->mode == BQ25970_ROLE_MASTER)
+				val->strval = "bq2597x-master";
+			else if (bq->mode == BQ25970_ROLE_SLAVE)
+				val->strval = "bq2597x-slave";
+			else
+				val->strval = "bq2597x-standalone";
+		}
+		break;
 	default:
 		return -EINVAL;
 
@@ -1847,7 +1942,7 @@ static int bq2597x_charger_set_property(struct power_supply *psy,
 				       const union power_supply_propval *val)
 {
 	struct bq2597x *bq = power_supply_get_drvdata(psy);
-	
+
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		bq2597x_enable_charge(bq, val->intval);
@@ -1857,6 +1952,9 @@ static int bq2597x_charger_set_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		bq2597x_set_present(bq, !!val->intval);
+		break;
+	case POWER_SUPPLY_PROP_TI_SET_BUS_PROTECTION_FOR_QC3:
+		bq2597x_set_bus_protection(bq, val->intval);
 		break;
 	default:
 		return -EINVAL;
@@ -1872,6 +1970,7 @@ static int bq2597x_charger_is_writeable(struct power_supply *psy,
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
+	case POWER_SUPPLY_PROP_TI_SET_BUS_PROTECTION_FOR_QC3:
 		ret = 1;
 		break;
 	default:
@@ -1889,7 +1988,6 @@ static int bq2597x_psy_register(struct bq2597x *bq)
 	bq->psy_cfg.drv_data = bq;
 	bq->psy_cfg.of_node = bq->dev->of_node;
 
-
 	if (bq->mode == BQ25970_ROLE_MASTER)
 		bq->psy_desc.name = "bq2597x-master";
 	else if (bq->mode == BQ25970_ROLE_SLAVE)
@@ -1905,7 +2003,7 @@ static int bq2597x_psy_register(struct bq2597x *bq)
 	bq->psy_desc.property_is_writeable = bq2597x_charger_is_writeable;
 
 
-	bq->fc2_psy = devm_power_supply_register(bq->dev, 
+	bq->fc2_psy = devm_power_supply_register(bq->dev,
 			&bq->psy_desc, &bq->psy_cfg);
 	if (IS_ERR(bq->fc2_psy)) {
 		bq_err("failed to register fc2_psy:%d\n", ret);
@@ -1923,13 +2021,13 @@ static void bq2597x_dump_reg(struct bq2597x *bq)
 	int ret;
 	u8 val;
 	u8 addr;
-
-	for (addr = 0x00; addr < 0x2E; addr++) {
-		ret = bq2597x_read_byte(bq, addr, &val);
-		if (!ret)
-			bq_err("Reg[%02X] = 0x%02X\n", addr, val);
+	if (bq_debug_flag) {
+		for (addr = 0x00; addr <= 0x2B; addr++) {
+			ret = bq2597x_read_byte(bq, addr, &val);
+			if (!ret)
+				bq_err("Reg[%02X] = 0x%02X\n", addr, val);
+		}
 	}
-
 }
 EXPORT_SYMBOL_GPL(bq2597x_dump_reg);
 
@@ -1944,22 +2042,22 @@ static void bq2597x_check_alarm_status(struct bq2597x *bq)
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_08, &flag);
 	if (!ret && (flag & BQ2597X_IBUS_UCP_FALL_FLAG_MASK))
-		bq_dbg("UCP_FLAG =0x%02X\n",
+		bq_info("UCP_FLAG =0x%02X\n",
 			!!(flag & BQ2597X_IBUS_UCP_FALL_FLAG_MASK));
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_2D, &flag);
 	if (!ret && (flag & BQ2597X_VDROP_OVP_FLAG_MASK))
-		bq_dbg("VDROP_OVP_FLAG =0x%02X\n",
+		bq_info("VDROP_OVP_FLAG =0x%02X\n",
 			!!(flag & BQ2597X_VDROP_OVP_FLAG_MASK));
 
 	/*read to clear alarm flag*/
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_0E, &flag);
 	if (!ret && flag)
-		bq_dbg("INT_FLAG =0x%02X\n", flag);
+		bq_info("INT_FLAG =0x%02X\n", flag);
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_0D, &stat);
 	if (!ret && stat != bq->prev_alarm) {
-		bq_dbg("INT_STAT = 0X%02x\n", stat);
+		bq_info("INT_STAT = 0X%02x\n", stat);
 		bq->prev_alarm = stat;
 		bq->bat_ovp_alarm = !!(stat & BAT_OVP_ALARM);
 		bq->bat_ocp_alarm = !!(stat & BAT_OCP_ALARM);
@@ -1973,7 +2071,7 @@ static void bq2597x_check_alarm_status(struct bq2597x *bq)
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_08, &stat);
 	if (!ret && (stat & 0x50))
-		bq_err("Reg[05]BUS_UCPOVP = 0x%02X\n", stat);
+		bq_err("Reg[08]BUS_UCPOVP = 0x%02X\n", stat);
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_0A, &stat);
 	if (!ret && (stat & 0x02))
@@ -1990,7 +2088,6 @@ static void bq2597x_check_fault_status(struct bq2597x *bq)
 	bool changed = false;
 
 	mutex_lock(&bq->data_lock);
-	//pr_err("bq2597x_check_fault_status\n");
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_10, &stat);
 	if (!ret && stat)
@@ -2017,6 +2114,16 @@ static void bq2597x_check_fault_status(struct bq2597x *bq)
 	mutex_unlock(&bq->data_lock);
 }
 
+static void bq2597x_charger_info(struct bq2597x *bq)
+{
+	int vbat, vbus, ibus;
+
+	bq2597x_get_adc_data(bq, ADC_VBAT, &vbat);
+	bq2597x_get_adc_data(bq, ADC_VBUS, &vbus);
+	bq2597x_get_adc_data(bq, ADC_IBUS, &ibus);
+	bq_info("charger info: vbat(%d), vbus(%d), ibus(%d)\n",
+				vbat, vbus, ibus);
+}
 
 /*
  * interrupt does nothing, just info event chagne, other module could get info
@@ -2026,9 +2133,7 @@ static irqreturn_t bq2597x_charger_interrupt(int irq, void *dev_id)
 {
 	struct bq2597x *bq = dev_id;
 
-	bq_dbg("INT OCCURED\n");
-
-#if 1
+	bq_info("INT OCCURED\n");
 	mutex_lock(&bq->irq_complete);
 	bq->irq_waiting = true;
 	if (!bq->resume_completed) {
@@ -2041,30 +2146,24 @@ static irqreturn_t bq2597x_charger_interrupt(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 	bq->irq_waiting = false;
-#if 1
+
 	/* TODO */
 	bq2597x_check_alarm_status(bq);
 	bq2597x_check_fault_status(bq);
-#endif
 
-#if 0
+	bq2597x_charger_info(bq);
 	bq2597x_dump_reg(bq);
-#endif
 	mutex_unlock(&bq->irq_complete);
-#endif
 	power_supply_changed(bq->fc2_psy);
 
 	return IRQ_HANDLED;
 }
-
 
 static void determine_initial_status(struct bq2597x *bq)
 {
 	if (bq->client->irq)
 		bq2597x_charger_interrupt(bq->client->irq, bq);
 }
-
-
 
 static int show_registers(struct seq_file *m, void *data)
 {
@@ -2106,7 +2205,7 @@ static void create_debugfs_entry(struct bq2597x *bq)
 		bq->debug_root = debugfs_create_dir("bq2597x-slave", NULL);
 	else
 		bq->debug_root = debugfs_create_dir("bq2597x-standalone", NULL);
-		
+
 	if (!bq->debug_root)
 		bq_err("Failed to create debug dir\n");
 
@@ -2153,7 +2252,6 @@ static int bq2597x_charger_probe(struct i2c_client *client,
 	struct device_node *node = client->dev.of_node;
 	int ret;
 
-	bq_err("bq2597x-probe");
 	bq = devm_kzalloc(&client->dev, sizeof(struct bq2597x), GFP_KERNEL);
 	if (!bq)
 		return -ENOMEM;
@@ -2217,6 +2315,7 @@ static int bq2597x_charger_probe(struct i2c_client *client,
 		enable_irq_wake(client->irq);
 	}
 
+	INIT_DELAYED_WORK(&bq->monitor_work, bq2597x_monitor_work);
 	device_init_wakeup(bq->dev, 1);
 	create_debugfs_entry(bq);
 
@@ -2226,9 +2325,8 @@ static int bq2597x_charger_probe(struct i2c_client *client,
 		goto err_1;
 	}
 
-
 	determine_initial_status(bq);
-
+	/* schedule_delayed_work(&bq->monitor_work, 60 * HZ); */
 	bq_info("bq2597x probe successfully, Part Num:%d\n!",
 				bq->part_no);
 
@@ -2253,6 +2351,8 @@ static int bq2597x_suspend(struct device *dev)
 	mutex_lock(&bq->irq_complete);
 	bq->resume_completed = false;
 	mutex_unlock(&bq->irq_complete);
+	bq2597x_enable_adc(bq, false);
+	cancel_delayed_work_sync(&bq->monitor_work);
 	bq_err("Suspend successfully!");
 
 	return 0;
@@ -2275,7 +2375,6 @@ static int bq2597x_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bq2597x *bq = i2c_get_clientdata(client);
 
-
 	mutex_lock(&bq->irq_complete);
 	bq->resume_completed = true;
 	if (bq->irq_waiting) {
@@ -2287,6 +2386,7 @@ static int bq2597x_resume(struct device *dev)
 		mutex_unlock(&bq->irq_complete);
 	}
 
+	bq2597x_enable_adc(bq, true);
 	power_supply_changed(bq->fc2_psy);
 	bq_err("Resume successfully!");
 
@@ -2295,7 +2395,6 @@ static int bq2597x_resume(struct device *dev)
 static int bq2597x_charger_remove(struct i2c_client *client)
 {
 	struct bq2597x *bq = i2c_get_clientdata(client);
-
 
 	bq2597x_enable_adc(bq, false);
 
@@ -2316,6 +2415,9 @@ static int bq2597x_charger_remove(struct i2c_client *client)
 
 static void bq2597x_charger_shutdown(struct i2c_client *client)
 {
+	struct bq2597x *bq = i2c_get_clientdata(client);
+
+	bq2597x_enable_adc(bq, false);
 }
 
 static const struct dev_pm_ops bq2597x_pm_ops = {
@@ -2330,7 +2432,7 @@ static const struct i2c_device_id bq2597x_charger_id[] = {
 	{"bq2597x-slave", BQ25970_ROLE_SLAVE},
 	{},
 };
-	
+
 static struct i2c_driver bq2597x_charger_driver = {
 	.driver		= {
 		.name	= "bq2597x-charger",
