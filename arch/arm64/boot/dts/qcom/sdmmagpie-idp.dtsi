@@ -451,6 +451,7 @@
 	mi,six-pin-step-chg;
 	mi,use-bq-pump;
 	qcom,distinguish-qc-class-ab;
+	qcom,typ-batt-capacity-mah = <5160>;
 };
 
 &pm6150_gpios {
