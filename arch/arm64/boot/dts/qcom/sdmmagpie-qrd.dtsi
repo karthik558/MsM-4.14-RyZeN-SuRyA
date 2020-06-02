@@ -40,7 +40,7 @@
 	mtp_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
 		#include "batterydata-M703-PM7150B-ATL-5160mah.dtsi"
-		#include "batterydata-J6B-sunwoda-5020mah.dtsi"
+		#include "batterydata-M703-ATL-6000mah.dtsi"
 	};
 };
 /*
