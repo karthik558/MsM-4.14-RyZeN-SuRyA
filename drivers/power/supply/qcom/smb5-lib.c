@@ -8221,6 +8221,11 @@ static void apsd_timer_cb(unsigned long data)
 }
 
 #define SOFT_JEITA_HYSTERESIS_OFFSET	0x200
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+#define DEFAULT_BATT_TYPE	"Unknown Battery"
+#define MISSING_BATT_TYPE	"Missing Battery"
+#define DEBUG_BATT_TYPE		"Debug Board"
+#endif
 static void jeita_update_work(struct work_struct *work)
 {
 	struct smb_charger *chg = container_of(work, struct smb_charger,
@@ -8232,6 +8237,9 @@ static void jeita_update_work(struct work_struct *work)
 	u32 jeita_hard_thresholds[2];
 	u16 addr;
 	u8 buff[2];
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+	int batt_id_ohm;
+#endif
 
 	batt_node = of_find_node_by_name(node, "qcom,battery-data");
 	if (!batt_node) {
@@ -8254,8 +8262,32 @@ static void jeita_update_work(struct work_struct *work)
 	if (val.intval <= 0)
 		return;
 
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+	batt_id_ohm = val.intval;
+
+	rc = smblib_get_prop_from_bms(chg,
+			POWER_SUPPLY_PROP_BATTERY_TYPE, &val);
+	if (rc < 0) {
+		smblib_err(chg, "Failed to get batt-type rc=%d\n", rc);
+		goto out;
+	}
+
+	smblib_err(chg, "longcheer get battery type: %s\n", val.strval);
+
+	if ((strcmp(val.strval, DEFAULT_BATT_TYPE) == 0)
+		|| (strcmp(val.strval, MISSING_BATT_TYPE) == 0)
+		|| (strcmp(val.strval, DEBUG_BATT_TYPE) == 0)){
+		pnode = of_batterydata_get_best_profile(batt_node,
+					batt_id_ohm / 1000, NULL);
+	}else{
+		pnode = of_batterydata_get_best_profile(batt_node,
+					batt_id_ohm / 1000, val.strval);
+	}
+#else
 	pnode = of_batterydata_get_best_profile(batt_node,
 					val.intval / 1000, NULL);
+#endif
+
 	if (IS_ERR(pnode)) {
 		rc = PTR_ERR(pnode);
 		smblib_err(chg, "Failed to detect valid battery profile %d\n",
