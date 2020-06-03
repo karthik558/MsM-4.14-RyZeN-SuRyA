@@ -46,6 +46,8 @@ union power_supply_propval lct_therm_india_level = {1,};
 bool lct_backlight_off;
 int LctIsInCall = 0;
 int LctThermal =0;
+extern bool profile_6000mah_judge;
+
 static struct smb_params smb5_pmi632_params = {
 	.fcc			= {
 		.name   = "fast charge current",
@@ -446,7 +448,11 @@ static int smb5_charge_step_charge_init(struct smb_charger *chg,
 					struct device_node *node)
 {
 	int rc = 0;
-
+	if(profile_6000mah_judge)
+	rc = read_step_chg_range_data_from_node(node,
+			"mi,six-pin-step-chg-params_2",
+			chg->six_pin_step_cfg);
+	else
 	rc = read_step_chg_range_data_from_node(node,
 			"mi,six-pin-step-chg-params",
 			chg->six_pin_step_cfg);
@@ -455,7 +461,7 @@ static int smb5_charge_step_charge_init(struct smb_charger *chg,
 					rc);
 		chg->six_pin_step_charge_enable = false;
 	}
-
+        pr_err("lct profile_6000mah_judge=%d\n",profile_6000mah_judge);
 	return rc;
 }
 
