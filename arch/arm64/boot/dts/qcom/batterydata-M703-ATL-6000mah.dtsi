@@ -26,21 +26,21 @@ qcom,m703-atl-6000mah {
 	qcom,jeita-fcc-ranges = <0  50   1100000
 				51  100  2900000
 				101 150  4600000
-				151 480  6000000
-				481 580  2900000>;
+				151 450  6000000
+				451 580  2900000>;
 
 	qcom,jeita-fv-ranges = <0   50   4450000
 				51  100  4450000
 				101 150  4450000
-				151 480  4480000
-				481 580  4100000>;
+				151 450  4480000
+				451 580  4100000>;
 
-	/* COOL = 15 degc, WARM = 48 degC */
-	qcom,jeita-soft-thresholds = <0x4621 0x1de6>;
-	/* COLD = 0 degC, HOT = 58 degC*/
-	qcom,jeita-hard-thresholds = <0x58cd 0x15f7>;
-	/* COOL hys = 18 degC, WARM hys = 45 degC */
-	qcom,jeita-soft-hys-thresholds = <0x4206 0x20b8>;
+	/* COOL = 10 degc, WARM = 45 degC */
+	qcom,jeita-soft-thresholds = <0x4ccc 0x20b8>;
+	/* COLD = 0 degC, HOT = 55 degC*/
+	qcom,jeita-hard-thresholds = <0x58cd 0x181d>;
+	/* COOL hys = 13 degC, WARM hys = 42 degC */
+	qcom,jeita-soft-hys-thresholds = <0x48d4 0x23c0>;
 	qcom,jeita-soft-fcc-ua = <1000000 2500000>;
 	qcom,jeita-soft-fv-uv = <4450000 4100000>;
 

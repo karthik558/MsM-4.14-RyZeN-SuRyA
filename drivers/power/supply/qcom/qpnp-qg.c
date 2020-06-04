@@ -63,7 +63,6 @@ static int qg_determine_pon_soc(struct qpnp_qg *chip);
 static int qg_sanitize_sdam(struct qpnp_qg *chip);
 static int qg_setup_battery(struct qpnp_qg *chip);
 static int qg_post_init(struct qpnp_qg *chip);
-bool profile_6000mah_judge =false;
 
 static bool is_battery_present(struct qpnp_qg *chip)
 {
@@ -1995,10 +1994,8 @@ static int qg_setprop_batt_age_level(struct qpnp_qg *chip, int batt_age_level)
 
 #define LOW_TEMP_FFC_BATT_FULL_CURRENT		1000000
 #define HIGH_TEMP_FFC_BATT_FULL_CURRENT		1100000
-#define BATT6000MAH_FFC_BATT_FULL_CURRENT		800000
-#define LOW_TEMP_FFC_CHG_TERM_CURRENT		-710
-#define HIGH_TEMP_FFC_CHG_TERM_CURRENT		-760
-#define BATT6000MAH_FFC_CHG_TERM_CURRENT		-530
+#define LOW_TEMP_FFC_CHG_TERM_CURRENT		-730
+#define HIGH_TEMP_FFC_CHG_TERM_CURRENT		-780
 static int qg_get_ffc_iterm_for_qg(struct qpnp_qg *chip)
 {
        int rc = 0;
@@ -2011,9 +2008,7 @@ static int qg_get_ffc_iterm_for_qg(struct qpnp_qg *chip)
                        pr_err("get charge_term_current fail!\n");
                        return LOW_TEMP_FFC_BATT_FULL_CURRENT;
                }
-               if (prop.intval == BATT6000MAH_FFC_CHG_TERM_CURRENT) {
-                       ffc_qg_iterm = BATT6000MAH_FFC_BATT_FULL_CURRENT;
-               } else if (prop.intval == LOW_TEMP_FFC_CHG_TERM_CURRENT) {
+               if (prop.intval == LOW_TEMP_FFC_CHG_TERM_CURRENT) {
                        ffc_qg_iterm = LOW_TEMP_FFC_BATT_FULL_CURRENT;
                } else if (prop.intval == HIGH_TEMP_FFC_CHG_TERM_CURRENT) {
                        ffc_qg_iterm = HIGH_TEMP_FFC_BATT_FULL_CURRENT;
@@ -2040,9 +2035,7 @@ static int qg_get_ffc_iterm_for_chg(struct qpnp_qg *chip)
                pr_err("Failed to get battery-temp, rc = %d\n", rc);
                return rc;
        }
-       if(profile_6000mah_judge)
-	       ffc_chg_iterm = BATT6000MAH_FFC_CHG_TERM_CURRENT;
-       else if (batt_temp < 350)
+       if (batt_temp < 350)
                ffc_chg_iterm = LOW_TEMP_FFC_CHG_TERM_CURRENT;
        else
                ffc_chg_iterm = HIGH_TEMP_FFC_CHG_TERM_CURRENT;
@@ -3243,12 +3236,10 @@ static int qg_load_battery_profile(struct qpnp_qg *chip)
 					profile_node = of_batterydata_get_best_profile(chip->batt_node,
 						chip->batt_id_ohm / 1000, "m703-atl-6000mah");
 					chip->profile_judge_done = true;
-					profile_6000mah_judge = true;
 				} else if (pval.arrayval[0] == 'N') {
 					profile_node = of_batterydata_get_best_profile(chip->batt_node,
 						chip->batt_id_ohm / 1000, "m703-pm7150b-atl-5160mah");
 					chip->profile_judge_done = true;
-                                        profile_6000mah_judge = false;
 				}
 			}
 		}

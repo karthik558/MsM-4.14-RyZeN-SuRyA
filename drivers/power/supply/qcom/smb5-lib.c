@@ -890,7 +890,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 			return rc;
 	}
 
-	if (enable && (pval.intval >= 480 || pval.intval <= 150)) {
+	if (enable && (pval.intval >= 450 || pval.intval <= 150)) {
 			smblib_dbg(chg, PR_MISC, "temp:%d is abort"
 							"do not setfastcharge mode\n", pval.intval);
 			enable = false;
@@ -6752,7 +6752,7 @@ static void typec_src_removal(struct smb_charger *chg)
 		chg->index_vfloat = 0;
 		vote(chg->fv_votable, SIX_PIN_VFLOAT_VOTER, false, 0);
 		vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER, false, 0);
-		vote(chg->fcc_votable, DYN_ADJ_FCC_VOTER, false, 0);
++		vote(chg->fcc_votable, DYN_ADJ_FCC_VOTER, false, 0);
 		vote(chg->usb_icl_votable, MAIN_ICL_MIN_VOTER, false, 0);
 		cancel_delayed_work_sync(&chg->six_pin_batt_step_chg_work);
 	}
