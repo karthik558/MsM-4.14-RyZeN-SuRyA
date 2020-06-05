@@ -46,6 +46,7 @@ union power_supply_propval lct_therm_india_level = {1,};
 bool lct_backlight_off;
 int LctIsInCall = 0;
 int LctThermal =0;
+
 static struct smb_params smb5_pmi632_params = {
 	.fcc			= {
 		.name   = "fast charge current",
@@ -445,17 +446,18 @@ static int read_step_chg_range_data_from_node(struct device_node *node,
 static int smb5_charge_step_charge_init(struct smb_charger *chg,
 					struct device_node *node)
 {
-	int rc = 0;
-
+	int rc = 0, rc2 = 0;
 	rc = read_step_chg_range_data_from_node(node,
 			"mi,six-pin-step-chg-params",
 			chg->six_pin_step_cfg);
-	if (rc < 0) {
+	rc2 = read_step_chg_range_data_from_node(node,
+			"mi,six-pin-step-chg-params_2",
+			chg->six_pin_step_cfg_2);
+	if ((rc < 0) && (rc2 < 0)) {
 		pr_debug("Read mi,six-pin-step-chg-params failed charger node, rc=%d\n",
 					rc);
 		chg->six_pin_step_charge_enable = false;
 	}
-
 	return rc;
 }
 
@@ -760,10 +762,13 @@ static int smb5_parse_dt(struct smb5 *chip)
 		rc = smb5_charge_step_charge_init(chg, node);
 		if (!rc) {
 			for (i = 0; i < MAX_STEP_ENTRIES; i++)
-				pr_err("six-pin-step-chg-cfg: %duV, %duA\n",
+				pr_err("lct six-pin-step-chg-cfg: %duV, %duA,six-pin-step-chg-cfg_2: %duV, %duA\n",
 						chg->six_pin_step_cfg[i].vfloat_step_uv,
-						chg->six_pin_step_cfg[i].fcc_step_ua);
+						chg->six_pin_step_cfg[i].fcc_step_ua,
+						chg->six_pin_step_cfg_2[i].vfloat_step_uv,
+						chg->six_pin_step_cfg_2[i].fcc_step_ua);
 		}
+
 	}
 
 	return 0;

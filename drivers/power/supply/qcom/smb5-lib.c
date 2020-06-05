@@ -61,6 +61,7 @@ EXPORT_SYMBOL(g_touchscreen_usb_pulgin);
 
 static void update_sw_icl_max(struct smb_charger *chg, int pst);
 static int smblib_get_prop_typec_mode(struct smb_charger *chg);
+bool six_pin_step_cfg_6000mah =false;
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val)
 {
@@ -890,7 +891,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 			return rc;
 	}
 
-	if (enable && (pval.intval >= 450 || pval.intval <= 150)) {
+	if (enable && (pval.intval >= 480 || pval.intval <= 150)) {
 			smblib_dbg(chg, PR_MISC, "temp:%d is abort"
 							"do not setfastcharge mode\n", pval.intval);
 			enable = false;
@@ -6752,7 +6753,7 @@ static void typec_src_removal(struct smb_charger *chg)
 		chg->index_vfloat = 0;
 		vote(chg->fv_votable, SIX_PIN_VFLOAT_VOTER, false, 0);
 		vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER, false, 0);
-+		vote(chg->fcc_votable, DYN_ADJ_FCC_VOTER, false, 0);
+		vote(chg->fcc_votable, DYN_ADJ_FCC_VOTER, false, 0);
 		vote(chg->usb_icl_votable, MAIN_ICL_MIN_VOTER, false, 0);
 		cancel_delayed_work_sync(&chg->six_pin_batt_step_chg_work);
 	}
@@ -7551,7 +7552,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 	struct smb_charger *chg = container_of(work, struct smb_charger,
 						six_pin_batt_step_chg_work.work);
 
-	int rc = 0;
+	int rc = 0,i = 0;
 	int input_present;
 	int main_charge_type;
 	int interval_ms = STEP_CHG_DELAYED_MONITOR_MS;
@@ -7581,6 +7582,28 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 		pr_err("start step vbat is too high, no need do step charge\n");
 		return;
 	}
+
+	if (six_pin_step_cfg_6000mah ==false){
+		rc = smblib_get_prop_from_bms(chg,POWER_SUPPLY_PROP_BATTERY_TYPE, &pval);
+		if (rc < 0) {
+		  pr_err("lct Failed to get batt-type rc=%d\n", rc);
+		}
+		//pr_err("lct longcheer to get batt-type =%s\n", pval.strval);
+		if (strcmp(pval.strval, "m703-atl-6000mah") == 0){
+			for (i=0; i<ARRAY_SIZE(chg->six_pin_step_cfg); ++i){
+				chg->six_pin_step_cfg[i]= chg->six_pin_step_cfg_2[i];
+				pr_err("lct longcheer six-pin-step-chg-cfg: %duV, %duA\n",
+							chg->six_pin_step_cfg[i].vfloat_step_uv,
+							chg->six_pin_step_cfg[i].fcc_step_ua);
+			}
+			six_pin_step_cfg_6000mah = true;
+		}
+	}
+	/*for (i=0; i<ARRAY_SIZE(chg->six_pin_step_cfg); ++i){
+		pr_err("six-pin-step-chg-cfg: %duV, %duA\n",
+				chg->six_pin_step_cfg[i].vfloat_step_uv,
+				chg->six_pin_step_cfg[i].fcc_step_ua);
+	}*/
 
 	/* set init start vfloat according to chg->start_step_vbat */
 	if (!chg->init_start_vbat_checked) {
@@ -8273,7 +8296,6 @@ static void jeita_update_work(struct work_struct *work)
 	}
 
 	smblib_err(chg, "longcheer get battery type: %s\n", val.strval);
-
 	if ((strcmp(val.strval, DEFAULT_BATT_TYPE) == 0)
 		|| (strcmp(val.strval, MISSING_BATT_TYPE) == 0)
 		|| (strcmp(val.strval, DEBUG_BATT_TYPE) == 0)){
