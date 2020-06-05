@@ -1661,7 +1661,7 @@ static const char *qg_get_battery_type(struct qpnp_qg *chip)
 	if (is_debug_batt_id(chip))
 		return DEBUG_BATT_TYPE;
 
-	if (chip->bp.batt_type_str) {
+	if ((chip->profile_judge_done) && (chip->bp.batt_type_str))  {
 		if (chip->profile_loaded)
 			return chip->bp.batt_type_str;
 	}

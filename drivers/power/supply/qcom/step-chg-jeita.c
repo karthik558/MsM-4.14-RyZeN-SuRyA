@@ -229,6 +229,11 @@ clean:
 }
 EXPORT_SYMBOL(read_range_data_from_node);
 
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+#define DEFAULT_BATT_TYPE	"Unknown Battery"
+#define MISSING_BATT_TYPE	"Missing Battery"
+#define DEBUG_BATT_TYPE		"Debug Board"
+#endif
 static int get_step_chg_jeita_setting_from_profile(struct step_chg_info *chip)
 {
 	struct device_node *batt_node, *profile_node;
@@ -262,8 +267,29 @@ static int get_step_chg_jeita_setting_from_profile(struct step_chg_info *chip)
 	if (batt_id_ohms < 0)
 		return -EBUSY;
 
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+	rc = power_supply_get_property(chip->bms_psy,
+			POWER_SUPPLY_PROP_BATTERY_TYPE, &prop);
+	if (rc < 0) {
+		pr_err("Failed to get batt-id rc=%d\n", rc);
+		return -EBUSY;
+	}
+
+	pr_err("longcheer get battery type: %s\n", prop.strval);
+
+	if ((strcmp(prop.strval, DEFAULT_BATT_TYPE) == 0)
+		|| (strcmp(prop.strval, MISSING_BATT_TYPE) == 0)
+		|| (strcmp(prop.strval, DEBUG_BATT_TYPE) == 0)){
+		profile_node = of_batterydata_get_best_profile(batt_node,
+					batt_id_ohms / 1000, NULL);
+	}else{
+		profile_node = of_batterydata_get_best_profile(batt_node,
+					batt_id_ohms / 1000, prop.strval);
+	}
+#else
 	profile_node = of_batterydata_get_best_profile(batt_node,
 					batt_id_ohms / 1000, NULL);
+#endif
 	if (IS_ERR(profile_node))
 		return PTR_ERR(profile_node);
 
