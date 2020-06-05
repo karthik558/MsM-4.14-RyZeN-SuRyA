@@ -714,6 +714,7 @@ struct smb_charger {
 	bool			six_pin_step_charge_enable;
 	bool			init_start_vbat_checked;
 	struct six_pin_step_data			six_pin_step_cfg[MAX_STEP_ENTRIES];
+	struct six_pin_step_data			six_pin_step_cfg_2[MAX_STEP_ENTRIES];
 	u32			start_step_vbat;
 	int			trigger_taper_count;
 	int			index_vfloat;
