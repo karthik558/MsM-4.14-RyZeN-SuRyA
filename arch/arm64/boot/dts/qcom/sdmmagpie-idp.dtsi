@@ -102,7 +102,14 @@
 		qcom,nq-ven = <&tlmm 12 0x00>;
 		qcom,nq-firm = <&tlmm 36 0x00>;
 		qcom,nq-clkreq = <&tlmm 31 0x00>;
-		qcom,nq-esepwr = <&tlmm 94 0x00>;
+                /*
+                20200605 wanglixiang start
+                GPIO94 was suspended before, and then used for reverse charging.
+                GPIO94 is now released in the NFC code.
+                In the code, GPIO22 is used to replace GPIO94
+                qcom,nq-esepwr = <&tlmm 94 0x00>;
+                */
+                qcom,nq-esepwr = <&tlmm 22 0x00>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <37 0>;
 		interrupt-names = "nfc_irq";
