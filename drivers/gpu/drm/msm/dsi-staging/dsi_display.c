@@ -5104,7 +5104,7 @@ static ssize_t dsi_display_get_whitepoint(struct device *dev,
 		rc = dsi_display_write_reg_page(ctrl, 0xFF, 0x20, buf, sizeof(buf));
 		rc = dsi_display_read_reg(ctrl, 0xA1, 0x00, buf, sizeof(buf));
 	} else {
-		rc = dsi_display_write_reg_page(ctrl, 0xFF, 0x20, buf, sizeof(buf));
+		rc = dsi_display_write_reg_page(ctrl, 0xFF, 0x10, buf, sizeof(buf));
 		rc = dsi_display_read_reg(ctrl, 0xA1, 0x00, buf, sizeof(buf));
 	}
 	if (rc <= 0) {
