@@ -1873,9 +1873,9 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_BATTERY_CHARGING_LIMITED:
 		rc = smblib_get_prop_battery_charging_limited(chg, val);
 		break;
-		break;
 	case POWER_SUPPLY_PROP_BQ_INPUT_SUSPEND:
 		rc = smblib_get_prop_battery_bq_input_suspend(chg, val);
+		break;
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 		rc = smblib_get_prop_system_temp_level(chg, val);
 		break;

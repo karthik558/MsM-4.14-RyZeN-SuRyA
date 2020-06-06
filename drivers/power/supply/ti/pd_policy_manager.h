@@ -73,7 +73,7 @@ enum pm_state {
 #define NON_VERIFIED_PPS_FCC_MAX		3000
 #define MAX_THERMAL_LEVEL			13
 /* jeita related */
-#define JEITA_WARM_THR			450
+#define JEITA_WARM_THR			480
 #define JEITA_COOL_NOT_ALLOW_CP_THR			100
 #define PDO_MAX_NUM			7
 /*
@@ -93,7 +93,7 @@ enum pm_state {
 #define TAPER_VOL_HYS			80
 #define TAPER_WITH_IBUS_HYS			60
 #define TAPER_IBUS_THR			450
-#define BQ_TAPER_HYS_MV			30
+#define BQ_TAPER_HYS_MV			10
 #define BQ_TAPER_DECREASE_STEP_MA			200
 struct sw_device {
 	bool charge_enabled;

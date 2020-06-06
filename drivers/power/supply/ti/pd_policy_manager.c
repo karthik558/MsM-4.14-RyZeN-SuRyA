@@ -990,9 +990,12 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 			vote(pdpm->fcc_votable, BQ_TAPER_FCC_VOTER,
 					false, 0);
 
+		usbpd_pm_limit_sw(pdpm, false);
+
 		if (!stop_sw && (!pdpm->sw.charge_enabled || pdpm->sw.charge_limited)) {
 			usbpd_pm_enable_sw(pdpm, true);
 		}
+
 		if (stop_sw && (pdpm->sw.charge_enabled || pdpm->sw.charge_limited))
 			usbpd_pm_enable_sw(pdpm, false);
 		usbpd_pm_update_sw_status(pdpm);

@@ -7560,11 +7560,11 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 	union power_supply_propval pval = {0, };
 
 	rc = smblib_is_input_present(chg, &input_present);
+
 	pr_err("input_present: %d\n", input_present);
 	if (rc < 0)
 		return;
 
-	pr_err("input_present: %d\n", input_present);
 	if (input_present == INPUT_NOT_PRESENT) {
 		chg->init_start_vbat_checked = false;
 		chg->trigger_taper_count = 0;
