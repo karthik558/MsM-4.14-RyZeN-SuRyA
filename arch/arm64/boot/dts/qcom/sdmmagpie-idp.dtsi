@@ -553,7 +553,7 @@
 			ti,bq2597x,bus-therm-disable;
 			ti,bq2597x,die-therm-disable;
 
-			ti,bq2597x,bat-ovp-threshold = <4480>;
+			ti,bq2597x,bat-ovp-threshold = <4500>;
 			ti,bq2597x,bat-ovp-alarm-threshold = <4450>;
 			//ti,bq2597x,bat-ocp-threshold = <5000>;
 			//ti,bq2597x,bat-ocp-alarm-threshold = <4500>;
