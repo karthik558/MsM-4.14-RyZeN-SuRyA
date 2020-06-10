@@ -553,12 +553,6 @@ static int smb5_parse_dt(struct smb5 *chip)
 		chg->otg_cl_ua =
 			(chip->chg.chg_param.smb_version == PMI632_SUBTYPE)
 						? MICRO_1PA : MICRO_3PA;
-
-	rc = of_property_read_u32(node,
-				"qcom,typ-batt-capacity-mah",&chg->typ_batt_capacity_mah);
-	if (rc < 0)
-		chg->typ_batt_capacity_mah = -EINVAL;
-
 	rc = of_property_read_u32(node, "qcom,chg-term-src",
 			&chip->dt.term_current_src);
 	if (rc < 0)
@@ -1891,7 +1885,14 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 				POWER_SUPPLY_PROP_CHARGE_FULL, val);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		val->intval = chg->typ_batt_capacity_mah;
+		rc = smblib_get_prop_from_bms(chg,
+				POWER_SUPPLY_PROP_BATTERY_TYPE,val);
+		if (strcmp(val->strval,"m703-atl-6000mah") == 0){
+			val->intval = 6000;
+		}
+		else if(strcmp(val->strval,"m703-pm7150b-atl-5160mah") == 0){
+			val->intval = 5160;
+		}
 		break;
 	case POWER_SUPPLY_PROP_FORCE_RECHARGE:
 		val->intval = 0;

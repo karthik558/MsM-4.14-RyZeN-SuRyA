@@ -596,7 +596,6 @@ struct smb_charger {
 	int			thermal_levels;
 	int			*thermal_mitigation;
 	int			dcp_icl_ua;
-	int			typ_batt_capacity_mah;
 	int			fake_capacity;
 	int			fake_batt_status;
 	bool			step_chg_enabled;
