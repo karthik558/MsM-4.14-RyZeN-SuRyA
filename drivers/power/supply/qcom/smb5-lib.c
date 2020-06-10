@@ -883,7 +883,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 			"do not setfastcharge mode\n", pval.intval);
 		enable = false;
 	}
-	/*if temp > 450 or temp < 150 do not set fastcharge flag*/
+	/*if temp > 480 or temp < 150 do not set fastcharge flag*/
 	rc = power_supply_get_property(chg->bms_psy,
 					POWER_SUPPLY_PROP_TEMP, &pval);
 	if (rc < 0) {
