@@ -627,6 +627,7 @@ int cam_sensor_match_id(struct cam_sensor_ctrl_t *s_ctrl)
 {
 	int rc = 0;
 	uint32_t chipid = 0;
+	uint32_t versionid = 0;
 	struct cam_camera_slave_info *slave_info;
 
 	slave_info = &(s_ctrl->sensordata->slave_info);
@@ -656,6 +657,21 @@ int cam_sensor_match_id(struct cam_sensor_ctrl_t *s_ctrl)
 			slave_info->sensor_id_reg_addr,
 			&chipid, CAMERA_SENSOR_I2C_TYPE_WORD,
 			CAMERA_SENSOR_I2C_TYPE_WORD);
+
+		if (0x0682 == chipid) {
+			rc = camera_io_dev_read(
+				&(s_ctrl->io_master_info),
+				0x0018,
+				&versionid, CAMERA_SENSOR_I2C_TYPE_WORD,
+				CAMERA_SENSOR_I2C_TYPE_BYTE);
+
+			CAM_ERR(CAM_SENSOR, "xyz version id 0x%x",
+						versionid);
+			if ((cam_sensor_id_by_mask(s_ctrl, versionid) == 0x02) ||
+				(cam_sensor_id_by_mask(s_ctrl, versionid) == 0x01)) {
+				chipid = chipid + 2;
+			}
+		}
 	}
 
 	CAM_ERR(CAM_SENSOR, "xyz read id: 0x%x expected id 0x%x:",
