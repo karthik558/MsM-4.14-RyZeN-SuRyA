@@ -553,12 +553,6 @@ static int smb5_parse_dt(struct smb5 *chip)
 		chg->otg_cl_ua =
 			(chip->chg.chg_param.smb_version == PMI632_SUBTYPE)
 						? MICRO_1PA : MICRO_3PA;
-
-	rc = of_property_read_u32(node,
-				"qcom,typ-batt-capacity-mah",&chg->typ_batt_capacity_mah);
-	if (rc < 0)
-		chg->typ_batt_capacity_mah = -EINVAL;
-
 	rc = of_property_read_u32(node, "qcom,chg-term-src",
 			&chip->dt.term_current_src);
 	if (rc < 0)
@@ -808,6 +802,9 @@ static enum power_supply_property smb5_usb_props[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	POWER_SUPPLY_PROP_QUICK_CHARGE_TYPE,
+	POWER_SUPPLY_PROP_HVDCP3_TYPE,
+	POWER_SUPPLY_PROP_TYPE_RECHECK,
 	POWER_SUPPLY_PROP_PD_CURRENT_MAX,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_TYPE,
@@ -903,6 +900,31 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_REAL_TYPE:
 		val->intval = chg->real_charger_type;
+		break;
+	case POWER_SUPPLY_PROP_HVDCP3_TYPE:
+		if (chg->real_charger_type != POWER_SUPPLY_TYPE_USB_HVDCP_3) {
+			val->intval = HVDCP3_NONE; /* 0: none hvdcp3 insert */
+		} else {
+			if (chg->qc_class_ab) {
+				if (chg->is_qc_class_a)
+					val->intval = HVDCP3_CLASSA_18W; /* 18W hvdcp3 insert */
+				else if (chg->is_qc_class_b)
+					val->intval = HVDCP3_CLASSB_27W; /* 27W hvdcp3 insert */
+				else
+					val->intval = HVDCP3_NONE;
+			} else {/* for F10 */
+				if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3)
+					val->intval = HVDCP3_CLASSA_18W; /* 18W hvdcp3 insert  */
+				else
+					val->intval = HVDCP3_NONE;
+			}
+                }
+		break;
+	case POWER_SUPPLY_PROP_QUICK_CHARGE_TYPE:
+		val->intval = smblib_get_quick_charge_type(chg);
+		break;
+	case POWER_SUPPLY_PROP_TYPE_RECHECK:
+		rc = smblib_get_prop_type_recheck(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_TYPEC_MODE:
 		if (chg->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB)
@@ -1136,6 +1158,10 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX_LIMIT:
 		smblib_set_prop_usb_voltage_max_limit(chg, val);
+		break;
+	case POWER_SUPPLY_PROP_TYPE_RECHECK:
+		pr_err("smblib_set_prop_type_recheck:: real_charger_type=%d val->intval=%d\n", chg->real_charger_type, val->intval);
+		rc = smblib_set_prop_type_recheck(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_ADAPTER_CC_MODE:
 		chg->adapter_cc_mode = val->intval;
@@ -1859,7 +1885,14 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 				POWER_SUPPLY_PROP_CHARGE_FULL, val);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		val->intval = chg->typ_batt_capacity_mah;
+		rc = smblib_get_prop_from_bms(chg,
+				POWER_SUPPLY_PROP_BATTERY_TYPE,val);
+		if (strcmp(val->strval,"m703-atl-6000mah") == 0){
+			val->intval = 6000;
+		}
+		else if(strcmp(val->strval,"m703-pm7150b-atl-5160mah") == 0){
+			val->intval = 5160;
+		}
 		break;
 	case POWER_SUPPLY_PROP_FORCE_RECHARGE:
 		val->intval = 0;
