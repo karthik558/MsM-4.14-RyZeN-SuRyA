@@ -1778,7 +1778,7 @@ int lct_nvt_tp_palm_callback(bool en)
 {
 	uint8_t buf[8] = {0};
 	int32_t ret = 0;
-	msleep(400);
+	msleep(800);
 	NVT_LOG("init write_buf[8] = {0}");
 	if (!bTouchIsAwake) {
 		NVT_ERR("tp is suspended, can not to set!");
@@ -1808,7 +1808,7 @@ int lct_nvt_tp_palm_callback(bool en)
 		goto exit;
 	}
 	set_lct_tp_palm_status(en);
-	NVT_LOG("%S PALM", en ? "Disable" : "Enable");
+	NVT_LOG("%s PALM", en ? "Disable" : "Enable");
 
 exit:
 	return 0;
@@ -2945,9 +2945,10 @@ static int32_t nvt_ts_suspend(struct device *dev)
 		NVT_LOG("Enabled touch wakeup gesture\n");
 	} else {
 		//---write command to enter "deep sleep mode"---
-		buf[0] = EVENT_MAP_HOST_CMD;
-		buf[1] = 0x11;
-		CTP_SPI_WRITE(ts->client, buf, 2);
+		//buf[0] = EVENT_MAP_HOST_CMD;
+		//buf[1] = 0x11;
+		//CTP_SPI_WRITE(ts->client, buf, 2);
+		NVT_LOG("power off, enter sleep mode\n");
 	}
 #else // WAKEUP_GESTURE
 	//---write command to enter "deep sleep mode"---
