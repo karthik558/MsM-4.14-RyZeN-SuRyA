@@ -73,8 +73,8 @@ enum pm_state {
 #define NON_VERIFIED_PPS_FCC_MAX		3000
 #define MAX_THERMAL_LEVEL			13
 /* jeita related */
-#define JEITA_WARM_THR			480
-#define JEITA_COOL_NOT_ALLOW_CP_THR			100
+#define JEITA_WARM_THR			580
+#define JEITA_COOL_NOT_ALLOW_CP_THR			50
 #define PDO_MAX_NUM			7
 /*
  * add hysteresis for warm threshold to avoid flash
