@@ -7813,10 +7813,10 @@ static int smblib_get_step_vfloat_index(struct smb_charger *chg,
 	return i;
 }
 
-static void smblib_dynamic_adjust_fcc(struct smb_charger *chg)
+static void smblib_dynamic_adjust_fcc(struct smb_charger *chg, bool enable)
 {
 	int rc = 0;
-	int batt_current_now, current_fcc;
+	int batt_current_now, current_fcc, current_step;
 	union power_supply_propval pval = {0, };
 
 	current_fcc = get_effective_result_locked(chg->fcc_votable);
@@ -7829,10 +7829,15 @@ static void smblib_dynamic_adjust_fcc(struct smb_charger *chg)
 		return;
 	}
 	batt_current_now = pval.intval * (-1);
+	current_step = chg->six_pin_step_cfg[chg->index_vfloat].fcc_step_ua;
 
 	if (batt_current_now >= DYN_ADJ_FCC_MAX_UA)
 		vote(chg->fcc_votable, DYN_ADJ_FCC_VOTER, true,
-				(current_fcc - DYN_ADJ_FCC_OFFSET_UA));
+			(current_fcc - DYN_ADJ_FCC_OFFSET_UA));
+	else if ((batt_current_now < (current_step - DYN_ADJ_FCC_OFFSET_UA))
+		&& (enable == true))
+		vote(chg->fcc_votable, DYN_ADJ_FCC_VOTER, true,
+			(current_fcc + DYN_ADJ_FCC_OFFSET_UA));
 
 	pr_err("smblib_dynamic_adjust_fcc: batt_current_now = %d\n", batt_current_now);
 }
@@ -7847,6 +7852,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 	int main_charge_type;
 	int interval_ms = STEP_CHG_DELAYED_MONITOR_MS;
 	int fcc_ua = 0, ibat_ua = 0, capacity = 0;
+	static bool add_fcc = true;
 	union power_supply_propval pval = {0, };
 
 	rc = smblib_is_input_present(chg, &input_present);
@@ -7904,11 +7910,12 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 		vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER,
 				true, chg->six_pin_step_cfg[chg->index_vfloat].fcc_step_ua);
 		chg->init_start_vbat_checked = true;
+		add_fcc = true;
 	}
 
 	/* When the battery current is greater than 6A,
 	adjust ffc to ensure that it does not exceed 6A */
-	smblib_dynamic_adjust_fcc(chg);
+	smblib_dynamic_adjust_fcc(chg, add_fcc);
 
 	rc = smblib_get_prop_batt_charge_type(chg, &pval);
 	if (rc < 0) {
@@ -7941,8 +7948,10 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 			goto out;
 		if ((chg->index_vfloat < MAX_STEP_ENTRIES -1 ) &&
 			(fcc_ua > chg->six_pin_step_cfg[chg->
-			index_vfloat + 1].fcc_step_ua))
+			index_vfloat + 1].fcc_step_ua)) {
 			vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER, true, fcc_ua);
+			add_fcc = false;
+		}
 	}
 
 	rc = smblib_get_batt_current_now(chg, &pval);
@@ -7973,6 +7982,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 					true, chg->six_pin_step_cfg[chg->index_vfloat].fcc_step_ua);
 			vote(chg->fv_votable, SIX_PIN_VFLOAT_VOTER,
 					true, chg->six_pin_step_cfg[chg->index_vfloat].vfloat_step_uv);
+			add_fcc = true;
 		}
 	}
 
