@@ -61,7 +61,6 @@ EXPORT_SYMBOL(g_touchscreen_usb_pulgin);
 
 static void update_sw_icl_max(struct smb_charger *chg, int pst);
 static int smblib_get_prop_typec_mode(struct smb_charger *chg);
-bool six_pin_step_cfg_6000mah =false;
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val)
 {
@@ -7879,7 +7878,29 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 		return;
 	}
 
-	if (six_pin_step_cfg_6000mah ==false){
+	/*if temp > 480 or temp < 150 do not set step charge work */
+	rc = power_supply_get_property(chg->bms_psy,
+					POWER_SUPPLY_PROP_TEMP, &pval);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't get bms temp:%d\n", rc);
+		return;
+	}
+
+	if  (pval.intval >= 480 || pval.intval <= 150) {
+		smblib_dbg(chg, PR_MISC, "temp:%d is abort"
+						"do not  set step charge work\n", pval.intval);
+		if (is_client_vote_enabled(chg->fv_votable,
+						SIX_PIN_VFLOAT_VOTER))
+			vote(chg->fv_votable, SIX_PIN_VFLOAT_VOTER, false, 0);
+		if (is_client_vote_enabled(chg->fcc_votable,
+						SIX_PIN_VFLOAT_VOTER))
+			vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER, false, 0);
+		return;
+	}
+
+	/* set init start vfloat according to chg->start_step_vbat */
+	if (!chg->init_start_vbat_checked) {
+
 		rc = smblib_get_prop_from_bms(chg,POWER_SUPPLY_PROP_BATTERY_TYPE, &pval);
 		if (rc < 0) {
 		  pr_err("lct Failed to get batt-type rc=%d\n", rc);
@@ -7892,17 +7913,8 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 							chg->six_pin_step_cfg[i].vfloat_step_uv,
 							chg->six_pin_step_cfg[i].fcc_step_ua);
 			}
-			six_pin_step_cfg_6000mah = true;
 		}
-	}
-	/*for (i=0; i<ARRAY_SIZE(chg->six_pin_step_cfg); ++i){
-		pr_err("six-pin-step-chg-cfg: %duV, %duA\n",
-				chg->six_pin_step_cfg[i].vfloat_step_uv,
-				chg->six_pin_step_cfg[i].fcc_step_ua);
-	}*/
 
-	/* set init start vfloat according to chg->start_step_vbat */
-	if (!chg->init_start_vbat_checked) {
 		chg->index_vfloat =
 				smblib_get_step_vfloat_index(chg, chg->start_step_vbat);
 		vote(chg->fv_votable, SIX_PIN_VFLOAT_VOTER,
