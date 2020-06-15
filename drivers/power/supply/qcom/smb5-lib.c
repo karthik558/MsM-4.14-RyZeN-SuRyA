@@ -6600,7 +6600,7 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 		} else {
 			/* A plain DCP, enforce DCP ICL if specified */
 			vote(chg->usb_icl_votable, DCP_VOTER,
-				chg->dcp_icl_ua != -EINVAL, chg->dcp_icl_ua);
+				chg->dcp_icl_ua != -EINVAL, /*chg->dcp_icl_ua*/ DCP_CURRENT_UA); //HTH-99130 set DCP CURRENT TO DCP_CURRENT_UA
 		}
 	}
 
