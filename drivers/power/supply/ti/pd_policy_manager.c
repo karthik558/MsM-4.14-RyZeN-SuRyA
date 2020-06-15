@@ -802,7 +802,7 @@ static void usbpd_pm_move_state(struct usbpd_pm *pdpm, enum pm_state state)
 static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 {
 	int ret;
-	int rc = 0;
+	//int rc = 0;
 	static int tune_vbus_retry;
 	static bool stop_sw;
 	static bool recover;
@@ -985,7 +985,10 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 
 	case PD_PM_STATE_FC2_EXIT:
 		/* select default 5V*/
-		usbpd_select_pdo(pdpm->pd, 1, 0, 0);
+		usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
+				6000000, 3000000);
+		pr_info("lct chg : apdo_selected_pdo %d\n", pdpm->apdo_selected_pdo);
+		//usbpd_select_pdo(pdpm->pd, 1, 0, 0);
 		if (pdpm->fcc_votable)
 			vote(pdpm->fcc_votable, BQ_TAPER_FCC_VOTER,
 					false, 0);
@@ -1012,8 +1015,8 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 
 		if (recover)
 			usbpd_pm_move_state(pdpm, PD_PM_STATE_ENTRY);
-		else
-			rc = 1;
+		//else
+		//	rc = 1;
 		
 		break;
 	default:
@@ -1021,7 +1024,7 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 		break;
 	}
 
-	return rc;
+	return false; //return rc
 }
 
 static void usbpd_pm_workfunc(struct work_struct *work)

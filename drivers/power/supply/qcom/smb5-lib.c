@@ -61,7 +61,6 @@ EXPORT_SYMBOL(g_touchscreen_usb_pulgin);
 
 static void update_sw_icl_max(struct smb_charger *chg, int pst);
 static int smblib_get_prop_typec_mode(struct smb_charger *chg);
-bool six_pin_step_cfg_6000mah =false;
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val)
 {
@@ -1256,6 +1255,7 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 	/* if PD is active, APSD is disabled so won't have a valid result */
 	if (chg->pd_active) {
 		chg->real_charger_type = POWER_SUPPLY_TYPE_USB_PD;
+		chg->usb_psy_desc.type = POWER_SUPPLY_TYPE_USB_PD;
 	} else if (chg->qc3p5_detected) {
 		chg->real_charger_type = POWER_SUPPLY_TYPE_USB_HVDCP_3P5;
 	} else {
@@ -1268,6 +1268,7 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 				(apsd_result->pst != POWER_SUPPLY_TYPE_USB_HVDCP_3 ||
 				chg->qc3p5_auth_complete))
 			chg->real_charger_type = apsd_result->pst;
+			chg->usb_psy_desc.type = apsd_result->pst;
 	}
 
 	smblib_dbg(chg, PR_MISC, "APSD=%s PD=%d QC3P5=%d\n",
@@ -6599,7 +6600,7 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 		} else {
 			/* A plain DCP, enforce DCP ICL if specified */
 			vote(chg->usb_icl_votable, DCP_VOTER,
-				chg->dcp_icl_ua != -EINVAL, chg->dcp_icl_ua);
+				chg->dcp_icl_ua != -EINVAL, /*chg->dcp_icl_ua*/ DCP_CURRENT_UA); //HTH-99130 set DCP CURRENT TO DCP_CURRENT_UA
 		}
 	}
 
@@ -7813,10 +7814,10 @@ static int smblib_get_step_vfloat_index(struct smb_charger *chg,
 	return i;
 }
 
-static void smblib_dynamic_adjust_fcc(struct smb_charger *chg)
+static void smblib_dynamic_adjust_fcc(struct smb_charger *chg, bool enable)
 {
 	int rc = 0;
-	int batt_current_now, current_fcc;
+	int batt_current_now, current_fcc, current_step;
 	union power_supply_propval pval = {0, };
 
 	current_fcc = get_effective_result_locked(chg->fcc_votable);
@@ -7829,10 +7830,15 @@ static void smblib_dynamic_adjust_fcc(struct smb_charger *chg)
 		return;
 	}
 	batt_current_now = pval.intval * (-1);
+	current_step = chg->six_pin_step_cfg[chg->index_vfloat].fcc_step_ua;
 
 	if (batt_current_now >= DYN_ADJ_FCC_MAX_UA)
 		vote(chg->fcc_votable, DYN_ADJ_FCC_VOTER, true,
-				(current_fcc - DYN_ADJ_FCC_OFFSET_UA));
+			(current_fcc - DYN_ADJ_FCC_OFFSET_UA));
+	else if ((batt_current_now < (current_step - DYN_ADJ_FCC_OFFSET_UA))
+		&& (enable == true))
+		vote(chg->fcc_votable, DYN_ADJ_FCC_VOTER, true,
+			(current_fcc + DYN_ADJ_FCC_OFFSET_UA));
 
 	pr_err("smblib_dynamic_adjust_fcc: batt_current_now = %d\n", batt_current_now);
 }
@@ -7847,6 +7853,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 	int main_charge_type;
 	int interval_ms = STEP_CHG_DELAYED_MONITOR_MS;
 	int fcc_ua = 0, ibat_ua = 0, capacity = 0;
+	static bool add_fcc = true;
 	union power_supply_propval pval = {0, };
 
 	rc = smblib_is_input_present(chg, &input_present);
@@ -7873,7 +7880,29 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 		return;
 	}
 
-	if (six_pin_step_cfg_6000mah ==false){
+	/*if temp > 480 or temp < 150 do not set step charge work */
+	rc = power_supply_get_property(chg->bms_psy,
+					POWER_SUPPLY_PROP_TEMP, &pval);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't get bms temp:%d\n", rc);
+		return;
+	}
+
+	if  (pval.intval >= 480 || pval.intval <= 150) {
+		smblib_dbg(chg, PR_MISC, "temp:%d is abort"
+						"do not  set step charge work\n", pval.intval);
+		if (is_client_vote_enabled(chg->fv_votable,
+						SIX_PIN_VFLOAT_VOTER))
+			vote(chg->fv_votable, SIX_PIN_VFLOAT_VOTER, false, 0);
+		if (is_client_vote_enabled(chg->fcc_votable,
+						SIX_PIN_VFLOAT_VOTER))
+			vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER, false, 0);
+		return;
+	}
+
+	/* set init start vfloat according to chg->start_step_vbat */
+	if (!chg->init_start_vbat_checked) {
+
 		rc = smblib_get_prop_from_bms(chg,POWER_SUPPLY_PROP_BATTERY_TYPE, &pval);
 		if (rc < 0) {
 		  pr_err("lct Failed to get batt-type rc=%d\n", rc);
@@ -7886,17 +7915,8 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 							chg->six_pin_step_cfg[i].vfloat_step_uv,
 							chg->six_pin_step_cfg[i].fcc_step_ua);
 			}
-			six_pin_step_cfg_6000mah = true;
 		}
-	}
-	/*for (i=0; i<ARRAY_SIZE(chg->six_pin_step_cfg); ++i){
-		pr_err("six-pin-step-chg-cfg: %duV, %duA\n",
-				chg->six_pin_step_cfg[i].vfloat_step_uv,
-				chg->six_pin_step_cfg[i].fcc_step_ua);
-	}*/
 
-	/* set init start vfloat according to chg->start_step_vbat */
-	if (!chg->init_start_vbat_checked) {
 		chg->index_vfloat =
 				smblib_get_step_vfloat_index(chg, chg->start_step_vbat);
 		vote(chg->fv_votable, SIX_PIN_VFLOAT_VOTER,
@@ -7904,11 +7924,12 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 		vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER,
 				true, chg->six_pin_step_cfg[chg->index_vfloat].fcc_step_ua);
 		chg->init_start_vbat_checked = true;
+		add_fcc = true;
 	}
 
 	/* When the battery current is greater than 6A,
 	adjust ffc to ensure that it does not exceed 6A */
-	smblib_dynamic_adjust_fcc(chg);
+	smblib_dynamic_adjust_fcc(chg, add_fcc);
 
 	rc = smblib_get_prop_batt_charge_type(chg, &pval);
 	if (rc < 0) {
@@ -7941,8 +7962,10 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 			goto out;
 		if ((chg->index_vfloat < MAX_STEP_ENTRIES -1 ) &&
 			(fcc_ua > chg->six_pin_step_cfg[chg->
-			index_vfloat + 1].fcc_step_ua))
+			index_vfloat + 1].fcc_step_ua)) {
 			vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER, true, fcc_ua);
+			add_fcc = false;
+		}
 	}
 
 	rc = smblib_get_batt_current_now(chg, &pval);
@@ -7973,6 +7996,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 					true, chg->six_pin_step_cfg[chg->index_vfloat].fcc_step_ua);
 			vote(chg->fv_votable, SIX_PIN_VFLOAT_VOTER,
 					true, chg->six_pin_step_cfg[chg->index_vfloat].vfloat_step_uv);
+			add_fcc = true;
 		}
 	}
 

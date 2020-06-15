@@ -133,7 +133,7 @@ enum hvdcp3_type {
 #define SDP_100_MA			100000
 #define SDP_CURRENT_UA			500000
 #define CDP_CURRENT_UA			1500000
-#define DCP_CURRENT_UA			2000000
+#define DCP_CURRENT_UA			1800000 //HTH-99130 set DCP CURRENT TO 1.8A
 #define FLOAT_CURRENT_UA		1000000
 #define HVDCP_CURRENT_UA		3000000
 #define HVDCP_CLASS_B_CURRENT_UA		3100000
@@ -159,7 +159,7 @@ enum hvdcp3_type {
 #define TAPER_DECREASE_FCC_UA			100000
 #define TAPER_IBAT_TRH_HYS_UA			50000
 #define MIN_TAPER_FCC_THR_UA			2000000
-#define TAPER_BATT_CAPACITY_THR			45
+#define TAPER_BATT_CAPACITY_THR			35
 
 #define STEP_CHG_DELAYED_MONITOR_MS			10000
 #define STEP_CHG_DELAYED_QUICK_MONITOR_MS			2000
@@ -493,6 +493,7 @@ struct smb_charger {
 	struct power_supply		*dc_psy;
 	struct power_supply		*bms_psy;
 	struct power_supply		*usb_main_psy;
+	struct power_supply_desc        usb_psy_desc;
 	struct power_supply		*usb_port_psy;
 	struct power_supply		*wls_psy;
 	struct power_supply		*cp_psy;
