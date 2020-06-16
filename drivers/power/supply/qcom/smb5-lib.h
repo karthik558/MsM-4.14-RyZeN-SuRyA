@@ -89,8 +89,6 @@ enum print_reason {
 #define DETACH_DETECT_VOTER		"DETACH_DETECT_VOTER"
 #define CC_MODE_VOTER			"CC_MODE_VOTER"
 #define MAIN_FCC_VOTER			"MAIN_FCC_VOTER"
-#define QC3P5_VOTER                    "QC3P5_VOTER"
-#define FCC_MAX_QC3P5_VOTER            "FCC_MAX_QC3P5_VOTER"
 #define DCIN_AICL_VOTER			"DCIN_AICL_VOTER"
 #define OVERHEAT_LIMIT_VOTER		"OVERHEAT_LIMIT_VOTER"
 #define PD_VERIFED_VOTER		"PD_VERIFED_VOTER"
@@ -143,7 +141,6 @@ enum hvdcp3_type {
 #define TYPEC_DEFAULT_CURRENT_UA	900000
 #define TYPEC_MEDIUM_CURRENT_UA		1500000
 #define TYPEC_HIGH_CURRENT_UA		3000000
-#define HVDCP3p5_40W_CURRENT_UA                4500000
 #define DCIN_ICL_MIN_UA			100000
 #define DCIN_ICL_MAX_UA			1500000
 #define DCIN_ICL_STEP_UA		100000
@@ -664,10 +661,6 @@ struct smb_charger {
 	int			usbin_forced_max_uv;
 	int			init_thermal_ua;
 	u32			comp_clamp_level;
-	bool					qc3p5_auth_complete;
-	bool					qc3p5_authenticated;
-	bool					qc3p5_authentication_started;
-	int 					qc3p5_power_limit_w;
 	bool			hvdcp3_standalone_config;
 	int			wls_icl_ua;
 	bool			dpdm_enabled;
