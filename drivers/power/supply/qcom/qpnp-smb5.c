@@ -841,8 +841,6 @@ static enum power_supply_property smb5_usb_props[] = {
 	POWER_SUPPLY_PROP_SKIN_HEALTH,
 	POWER_SUPPLY_PROP_APSD_RERUN,
 	POWER_SUPPLY_PROP_APSD_TIMEOUT,
-	POWER_SUPPLY_PROP_QC3P5_POWER_LIMIT,
-	POWER_SUPPLY_PROP_QC3P5_CURRENT_MAX,
 };
 
 static int smb5_usb_get_prop(struct power_supply *psy,
@@ -1057,13 +1055,6 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_APSD_TIMEOUT:
 		val->intval = chg->apsd_ext_timeout;
 		break;
-	case POWER_SUPPLY_PROP_QC3P5_POWER_LIMIT:
-		val->intval = chg->qc3p5_power_limit_w;
-		break;
-	case POWER_SUPPLY_PROP_QC3P5_CURRENT_MAX:
-		val->intval = get_client_vote(chg->usb_icl_votable,
-								QC3P5_VOTER);
-		break;
 	default:
 		pr_err("get prop %d is not supported in usb\n", psp);
 		rc = -EINVAL;
@@ -1171,9 +1162,6 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 		chg->apsd_ext_timeout = false;
 		smblib_rerun_apsd(chg);
 		break;
-	case POWER_SUPPLY_PROP_QC3P5_CURRENT_MAX:
-		rc = vote(chg->usb_icl_votable, QC3P5_VOTER, true, val->intval);
-		break;
 	default:
 		pr_err("set prop %d is not supported\n", psp);
 		rc = -EINVAL;
@@ -1195,7 +1183,7 @@ static int smb5_usb_prop_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_APSD_RERUN:
 	case POWER_SUPPLY_PROP_PD_AUTHENTICATION:
 	case POWER_SUPPLY_PROP_FASTCHARGE_MODE:
-	case POWER_SUPPLY_PROP_QC3P5_CURRENT_MAX:
+
 		return 1;
 	default:
 		break;

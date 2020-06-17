@@ -256,7 +256,7 @@
 	qcom,codec-aux-devs = <&wcd937x_codec>;
 	qcom,msm_audio_ssr_devs = <&audio_apr>, <&q6core>,
 				<&lpi_tlmm>, <&bolero>;
-	qcom,ter-mi2s-gpios = <&cdc_ter_mi2s_gpios>;
+	qcom,tert-mi2s-gpios = <&cdc_ter_mi2s_gpios>;
 };
 
 &soc {

@@ -500,7 +500,6 @@ enum {
 	FLOAT,
 	HVDCP2,
 	HVDCP3,
-	HVDCP3P5,
 	MAX_TYPES
 };
 
@@ -545,10 +544,6 @@ static const struct apsd_result smblib_apsd_results[] = {
 		.bit	= DCP_CHARGER_BIT | QC_3P0_BIT,
 		.pst	= POWER_SUPPLY_TYPE_USB_HVDCP_3,
 	},
-	[HVDCP3P5] = {
-		.name	= "HVDCP3P5",
-		.pst	= POWER_SUPPLY_TYPE_USB_HVDCP_3P5,
-	},
 };
 
 static const struct apsd_result *smblib_get_apsd_result(struct smb_charger *chg)
@@ -581,15 +576,9 @@ static const struct apsd_result *smblib_get_apsd_result(struct smb_charger *chg)
 	}
 
 	if (apsd_stat & QC_CHARGER_BIT) {
-		/* check if it is qc3.5, if not, return the initial result*/
-		if (result == &smblib_apsd_results[HVDCP3]
-					&& chg->qc3p5_authenticated)
-			result = &smblib_apsd_results[HVDCP3P5];
-		else if ((result != &smblib_apsd_results[HVDCP3P5])
-				&& (result != &smblib_apsd_results[HVDCP3])) {
-				/* If not QC3 or QC3.5, return QC2 */
-				result = &smblib_apsd_results[HVDCP2];
-		}
+		/* since its a qc_charger, either return HVDCP3 or HVDCP2 */
+		if (result != &smblib_apsd_results[HVDCP3])
+			result = &smblib_apsd_results[HVDCP2];
 	}
 
 	return result;
@@ -1264,9 +1253,7 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 		 * detected as as SDP
 		 */
 		if (!(apsd_result->pst == POWER_SUPPLY_TYPE_USB_FLOAT &&
-				chg->real_charger_type == POWER_SUPPLY_TYPE_USB) &&
-				(apsd_result->pst != POWER_SUPPLY_TYPE_USB_HVDCP_3 ||
-				chg->qc3p5_auth_complete))
+				chg->real_charger_type == POWER_SUPPLY_TYPE_USB))
 			chg->real_charger_type = apsd_result->pst;
 			chg->usb_psy_desc.type = apsd_result->pst;
 	}
@@ -2127,7 +2114,6 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	union power_supply_propval pval = {0, };
 	bool usb_online, dc_online;
 	u8 stat;
-	int batt_health;
 	int rc, suspend = 0;
 
 	if (chg->use_bq_pump && !chg->six_pin_step_charge_enable
@@ -2177,14 +2163,6 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 		return rc;
 	}
 	dc_online = (bool)pval.intval;
-
-	rc = smblib_get_prop_batt_health(chg, &pval);
-	if (rc < 0) {
-		smblib_err(chg, "Couldn't get batt health property rc=%d\n",
-			rc);
-		return rc;
-	}
-	batt_health = pval.intval;
 
 	rc = smblib_read(chg, BATTERY_CHARGER_STATUS_1_REG, &stat);
 	if (rc < 0) {
@@ -2239,12 +2217,6 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	if (is_client_vote_enabled_locked(chg->usb_icl_votable,
 						CHG_TERMINATION_VOTER)) {
 		val->intval = POWER_SUPPLY_STATUS_FULL;
-		return 0;
-	}
-
-	if((POWER_SUPPLY_HEALTH_COOL == batt_health || POWER_SUPPLY_HEALTH_WARM == batt_health || POWER_SUPPLY_HEALTH_OVERHEAT == batt_health || POWER_SUPPLY_HEALTH_OVERVOLTAGE == batt_health)
-		&& val->intval == POWER_SUPPLY_STATUS_FULL){
-		val->intval = POWER_SUPPLY_STATUS_CHARGING;
 		return 0;
 	}
 
@@ -3225,8 +3197,7 @@ int smblib_dp_dm_bq(struct smb_charger *chg, int val)
 		 * ignore them to allow maxium vbus as 11V, as charge pump do not
 		 * need the vin more than 11V, and protect the device.
 		 */
-		if ( (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3)
-					&& (chg->pulse_cnt > MAX_PLUSE_COUNT_ALLOWED) )
+		if (chg->pulse_cnt > MAX_PLUSE_COUNT_ALLOWED)
 			return rc;
 		/*
 		 * Pre-emptively increment pulse count to enable the setting
@@ -5364,14 +5335,15 @@ int smblib_get_charge_current(struct smb_charger *chg,
 
 	typec_source_rd = smblib_get_prop_ufp_mode(chg);
 
-	/* QC 2.0/3.0/3.5 adapter */
-	if ((apsd_result->bit & (QC_3P0_BIT | QC_2P0_BIT)) ||
-		(apsd_result->pst == POWER_SUPPLY_TYPE_USB_HVDCP_3P5)) {
-		if ((apsd_result->pst == POWER_SUPPLY_TYPE_USB_HVDCP_3P5)
-			&& (chg->qc3p5_power_limit_w == 40))
-			*total_current_ua = HVDCP3p5_40W_CURRENT_UA;
-		else
-			*total_current_ua = HVDCP_CURRENT_UA;
+	/* QC 3.0 adapter */
+	if (apsd_result->bit & QC_3P0_BIT) {
+ 		*total_current_ua = HVDCP_CURRENT_UA;
+ 		return 0;
+ 	}
+ 
+	/* QC 2.0 adapter */
+	if (apsd_result->bit & QC_2P0_BIT) {
+		*total_current_ua = HVDCP2_CURRENT_UA;
 		return 0;
 	}
 
@@ -6140,7 +6112,7 @@ static void smblib_handle_sdp_enumeration_done(struct smb_charger *chg,
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: sdp-enumeration-done %s\n",
 		   rising ? "rising" : "falling");
 }
-
+#if 0
 static bool qc3p5_vbus_timeout_check(struct smb_charger *chg,
 		int timeout_ms, int vbus_lo_bound,
 		int vbus_hi_bound, int *vbus_uv)
@@ -6309,7 +6281,7 @@ static int qc3p5_authenticate(struct smb_charger *chg)
 
 	return rc;
 }
-
+#endif
 #define APSD_EXTENDED_TIMEOUT_MS	400
 static int smblib_hvdcp3_raise_fsw(struct smb_charger *chg, int pulse_count)
 {
@@ -6495,43 +6467,16 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 	if (!rising)
 		return;
 
-	/* Run QC3P5 Authentication */
-	if (!chg->qc3p5_authentication_started) {
-		rc = qc3p5_authenticate(chg);
-		if (rc < 0) {
-			chg->qc3p5_authentication_started = false;
-			chg->qc3p5_authenticated = false;
-			dev_err(chg->dev,
-			"QC3.5 Authentication Failed, rc=%d\n", rc);
-		}
-		chg->qc3p5_auth_complete = true;
-	}
-
-	smblib_update_usb_type(chg);
-
-	/* Release 500mA QC3.5 Authentication vote */
-	vote(chg->usb_icl_votable, QC3P5_VOTER, false, 0);
-
 	if (chg->mode == PARALLEL_MASTER)
 		vote(chg->pl_enable_votable_indirect, USBIN_V_VOTER, true, 0);
 
 	/* the APSD done handler will set the USB supply type */
 	apsd_result = smblib_get_apsd_result(chg);
 
-	if (apsd_result->pst == POWER_SUPPLY_TYPE_USB_HVDCP_3P5 && chg->support_ffc) {
-		if(!smblib_get_fastcharge_mode(chg))
-			smblib_set_fastcharge_mode(chg, true);
-	}
 	/* for QC3, switch to CP if present */
-	if (((apsd_result->bit & QC_3P0_BIT)
-			|| (apsd_result->pst == POWER_SUPPLY_TYPE_USB_HVDCP_3P5))
+	if ((apsd_result->bit & QC_3P0_BIT)
 		&& (chg->sec_cp_present || chg->use_bq_pump)) {
-		if (apsd_result->pst == POWER_SUPPLY_TYPE_USB_HVDCP_3P5) {
-			if (chg->support_ffc) {
-				if( !smblib_get_fastcharge_mode(chg) )
-					smblib_set_fastcharge_mode(chg, true);
-			}
-		} else if (!chg->qc_class_ab) {
+		if (!chg->qc_class_ab) {
 			rc = smblib_select_sec_charger(chg, POWER_SUPPLY_CHARGER_SEC_CP,
 						POWER_SUPPLY_CP_HVDCP3, false);
 			if (rc < 0)
@@ -6595,8 +6540,7 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 					CHARGER_TYPE_VOTER, false, 0);
 			vote(chg->hdc_irq_disable_votable,
 					CHARGER_TYPE_VOTER, false, 0);
-			if (!chg->raise_vbus_to_detect && (chg->real_charger_type
-					!= POWER_SUPPLY_TYPE_USB_HVDCP_3P5)) {
+			if (!chg->raise_vbus_to_detect ) {
 				if (chg->is_qc_class_a) {
 					vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 						HVDCP_CLASS_A_MAX_UA);
@@ -6649,9 +6593,7 @@ static void update_sw_icl_max(struct smb_charger *chg, int pst)
 	 * HVDCP 2/3, handled separately
 	 */
 	if (pst == POWER_SUPPLY_TYPE_USB_HVDCP
-			|| pst == POWER_SUPPLY_TYPE_USB_HVDCP_3
-			|| pst == POWER_SUPPLY_TYPE_USB_HVDCP_3P5)
-
+			|| pst == POWER_SUPPLY_TYPE_USB_HVDCP_3)
 		return;
 
 	/* TypeC rp med or high, use rp value */
@@ -7013,7 +6955,6 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, CHG_TERMINATION_VOTER, false, 0);
 	vote(chg->usb_icl_votable, THERMAL_THROTTLE_VOTER, false, 0);
 	vote(chg->usb_icl_votable, OTG_VOTER, false, 0);
-	vote(chg->usb_icl_votable, QC3P5_VOTER, false, 0);
 
 	/* reset usb irq voters */
 	vote(chg->limited_irq_disable_votable, CHARGER_TYPE_VOTER,
@@ -7068,14 +7009,14 @@ static void typec_src_removal(struct smb_charger *chg)
 
 	/* Reset CC mode votes */
 	vote(chg->fcc_main_votable, MAIN_FCC_VOTER, false, 0);
-	vote(chg->fcc_votable, FCC_MAX_QC3P5_VOTER, false, 0);
 	chg->adapter_cc_mode = 0;
 	chg->thermal_overheat = 0;
 	vote_override(chg->fcc_votable, CC_MODE_VOTER, false, 0);
 	vote_override(chg->usb_icl_votable, CC_MODE_VOTER, false, 0);
 	vote(chg->cp_disable_votable, OVERHEAT_LIMIT_VOTER, false, 0);
 	vote(chg->usb_icl_votable, OVERHEAT_LIMIT_VOTER, false, 0);
-
+	vote(chg->usb_icl_votable, MAIN_CHG_VOTER,  false, 0);
+  
 	/* write back the default FLOAT charger configuration */
 	rc = smblib_masked_write(chg, USBIN_OPTIONS_2_CFG_REG,
 				(u8)FLOAT_OPTIONS_MASK, chg->float_cfg);
@@ -7102,11 +7043,7 @@ static void typec_src_removal(struct smb_charger *chg)
 			pr_err("Failed to force 5V\n");
 	}
 
-	/* Reset QC3.5 Authentication Flag and power limit*/
-	chg->qc3p5_authenticated = false;
-	chg->qc3p5_auth_complete = false;
-	chg->qc3p5_authentication_started = false;
-	chg->qc3p5_power_limit_w = 18;
+
 
 	/*
 	 * if non-compliant charger caused UV, restore original max pulses
