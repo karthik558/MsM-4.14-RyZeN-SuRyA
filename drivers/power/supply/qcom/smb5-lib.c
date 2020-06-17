@@ -7788,7 +7788,9 @@ static void smblib_dynamic_adjust_fcc(struct smb_charger *chg, bool enable)
 		vote(chg->fcc_votable, DYN_ADJ_FCC_VOTER, true,
 			(current_fcc - DYN_ADJ_FCC_OFFSET_UA));
 	else if ((batt_current_now < (current_step - DYN_ADJ_FCC_OFFSET_UA))
-		&& (enable == true))
+		&& (enable == true)
+		&& (strcmp(get_effective_client(chg->fcc_votable),
+			 ESR_WORK_VOTER) != 0))
 		vote(chg->fcc_votable, DYN_ADJ_FCC_VOTER, true,
 			(current_fcc + DYN_ADJ_FCC_OFFSET_UA));
 
