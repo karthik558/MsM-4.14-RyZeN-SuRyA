@@ -28,6 +28,9 @@
 #include "step-chg-jeita.h"
 #include "storm-watch.h"
 #include "schgm-flash.h"
+#ifdef CONFIG_REVERSE_CHARGE
+#include <linux/gpio.h>
+#endif
 
 #if CONFIG_TOUCHSCREEN_COMMON
 typedef struct touchscreen_usb_piugin_data{
@@ -7223,6 +7226,20 @@ irqreturn_t typec_state_change_irq_handler(int irq, void *data)
 		smblib_handle_rp_change(chg, typec_mode);
 	chg->typec_mode = typec_mode;
 
+#ifdef CONFIG_REVERSE_CHARGE
+	//pr_err("longcheer:%s,reverse_charge_mode=%d,typec_mode=%d\n",__func__,
+	//	chg->reverse_charge_mode,chg->typec_mode);
+	if(chg->typec_mode == POWER_SUPPLY_TYPEC_SINK){
+		if (gpio_is_valid(chg->switch_sel_gpio)){
+			gpio_set_value(chg->switch_sel_gpio, 0);
+		}
+
+		chg->reverse_charge_mode = false;
+		chg->reverse_charge_state = false;
+	}
+#endif		
+
+
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: cc-state-change; Type-C %s detected\n",
 				smblib_typec_mode_name[chg->typec_mode]);
 
@@ -8905,6 +8922,36 @@ static void smblib_dual_role_check_work(struct work_struct *work)
 	mutex_unlock(&chg->dr_lock);
 	vote(chg->awake_votable, DR_SWAP_VOTER, false, 0);
 }
+
+
+#ifdef CONFIG_REVERSE_CHARGE
+void rerun_reverse_check(struct smb_charger *chg)
+{
+	chg->reverse_charge_state = chg->reverse_charge_mode;
+
+	smblib_notify_usb_host(chg, false);
+
+	pr_err("longcheer:%s,reverse_charge_mode=%d,typec_mode=%d\n",__func__,
+		chg->reverse_charge_mode,chg->typec_mode);
+	if(chg->reverse_charge_mode &&(chg->typec_mode == POWER_SUPPLY_TYPEC_SINK)){
+		if (gpio_is_valid(chg->switch_sel_gpio)){
+			gpio_set_value(chg->switch_sel_gpio, 1);
+		}
+	}else{
+		if (gpio_is_valid(chg->switch_sel_gpio)){
+			gpio_set_value(chg->switch_sel_gpio, 0);
+		}
+	}
+
+
+	msleep(500);
+
+	smblib_notify_usb_host(chg, true);
+
+	power_supply_changed(chg->usb_psy);
+
+}
+#endif
 
 static void smblib_charger_type_recheck(struct work_struct *work)
 {

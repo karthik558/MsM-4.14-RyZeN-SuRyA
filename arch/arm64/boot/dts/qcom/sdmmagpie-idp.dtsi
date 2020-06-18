@@ -463,6 +463,7 @@
 	mi,six-pin-step-chg;
 	mi,use-bq-pump;
 	qcom,distinguish-qc-class-ab;
+	mi,swithc-sel-gpio = <&tlmm 94 0>;
 };
 
 &pm6150_gpios {
