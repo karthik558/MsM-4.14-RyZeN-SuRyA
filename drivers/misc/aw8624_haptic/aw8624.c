@@ -600,6 +600,7 @@ static int aw8624_haptic_play_go(struct aw8624 *aw8624, bool flag)
 	if (flag == true) {
 		aw8624_i2c_write_bits(aw8624, AW8624_REG_GO,
 				      AW8624_BIT_GO_MASK, AW8624_BIT_GO_ENABLE);
+		mdelay(2);//Daniel 20200616 modify
 	} else {
 		aw8624_i2c_write_bits(aw8624, AW8624_REG_GO,
 				      AW8624_BIT_GO_MASK,
@@ -607,8 +608,8 @@ static int aw8624_haptic_play_go(struct aw8624 *aw8624, bool flag)
 	}
 	return 0;
 }
-
-static int aw8624_haptic_stop_delay(struct aw8624 *aw8624)
+//Daniel 20200616 modify start
+/*static int aw8624_haptic_stop_delay(struct aw8624 *aw8624)
 {
 	unsigned char reg_val = 0;
 	unsigned int cnt = 100;
@@ -626,18 +627,36 @@ static int aw8624_haptic_stop_delay(struct aw8624 *aw8624)
 	pr_err("%s do not enter standby automatically\n", __func__);
 
 	return 0;
-}
+}*/
 
 static int aw8624_haptic_stop(struct aw8624 *aw8624)
 {
-	pr_debug("%s enter\n", __func__);
+	unsigned char reg_val = 0;
+	unsigned int cnt = 60;
+	unsigned int go_disable_times = 0;
 
-	aw8624_haptic_play_go(aw8624, false);
-	aw8624_haptic_stop_delay(aw8624);
-	aw8624_haptic_play_mode(aw8624, AW8624_HAPTIC_STANDBY_MODE);
+        pr_info("%s enter\n", __func__);
+	while(cnt--){
+		aw8624_i2c_read(aw8624, AW8624_REG_GLB_STATE, &reg_val);
+		if (reg_val == 0){//standby
+			aw8624_haptic_play_mode(aw8624, AW8624_HAPTIC_STANDBY_MODE);
+			return 0;
+		} else if (reg_val <=3){//bringup
+			usleep_range(2000,2500);
+			pr_info("%s bringup,reg glb_state=0x%02x\n",__func__, reg_val);
+		} else {//playing
+			if (go_disable_times == 0){//go->0 just set one time
+				aw8624_haptic_play_go(aw8624, false);
+				go_disable_times = 1;
+			}
+			usleep_range(2000,2500);
+			pr_info("%s playing,reg glb_state=0x%02x\n",__func__, reg_val);
+		}
+	}
 
 	return 0;
 }
+//Daniel 20200616 modify end
 
 static int aw8624_haptic_start(struct aw8624 *aw8624)
 {
@@ -1619,6 +1638,8 @@ static int aw8624_haptic_cont(struct aw8624 *aw8624)
 static int aw8624_haptic_get_f0(struct aw8624 *aw8624)
 {
 	int ret = 0;
+	//Daniel 20200616 modify start
+	unsigned char i = 0;
 	unsigned char reg_val = 0;
 	unsigned char f0_pre_num = 0;
 	unsigned char f0_wait_num = 0;
@@ -1626,6 +1647,7 @@ static int aw8624_haptic_get_f0(struct aw8624 *aw8624)
 	unsigned char f0_trace_num = 0;
 	unsigned int t_f0_trace_ms = 0;
 	unsigned int t_f0_ms = 0;
+	unsigned int f0_cali_cnt = 50;
 
 	pr_info("%s enter\n", __func__);
 
@@ -1675,19 +1697,19 @@ static int aw8624_haptic_get_f0(struct aw8624 *aw8624)
 	aw8624_i2c_write(aw8624, AW8624_REG_DRV_LVL, aw8624->info.cont_drv_lvl);
 
 	/* f0 trace parameter */
-	t_f0_ms = (1000 * 10 / 2) / aw8624->info.f0_pre;
+	t_f0_ms = 1000 * 10  / aw8624->info.f0_pre;
 	f0_pre_num = aw8624->info.f0_trace_parameter[0];
 	f0_wait_num = aw8624->info.f0_trace_parameter[1];
 	f0_trace_num = aw8624->info.f0_trace_parameter[3];
-	f0_repeat_num =
-	    ((aw8624->info.parameter1 * aw8624->info.f0_pre * 100) / 5000 -
+	f0_repeat_num = aw8624->info.f0_trace_parameter[2];
+	/*((aw8624->info.parameter1 * aw8624->info.f0_pre * 100) / 5000 -
 	     100 * (f0_pre_num + f0_wait_num + 2)) / (f0_trace_num +
 						      f0_wait_num + 2);
 
 	if (f0_repeat_num % 100 >= 50)
 		f0_repeat_num = f0_repeat_num / 100 + 1;
 	else
-		f0_repeat_num = f0_repeat_num / 100;
+		f0_repeat_num = f0_repeat_num / 100;*/
 
 	aw8624_i2c_write(aw8624,
 			 AW8624_REG_NUM_F0_1,
@@ -1703,13 +1725,26 @@ static int aw8624_haptic_get_f0(struct aw8624 *aw8624)
 	aw8624_haptic_play_go(aw8624, true);
 
 	/* f0 trace time */
-	t_f0_trace_ms = t_f0_ms *
-	    (f0_pre_num + f0_wait_num + 2 + (f0_trace_num + f0_wait_num + 2)) +
-	    50;
-	mdelay(t_f0_trace_ms + 20);
+	t_f0_trace_ms = t_f0_ms * (f0_pre_num + f0_wait_num + (f0_trace_num + f0_wait_num ) * f0_repeat_num);
+	mdelay(t_f0_trace_ms + 10);
 
-	aw8624_haptic_read_f0(aw8624);
-	aw8624_haptic_read_beme(aw8624);
+	pr_info("%s t_f0_trace_ms:%d \n", __func__,t_f0_trace_ms);
+	for (i = 0; i < f0_cali_cnt; i++) {
+		ret = aw8624_i2c_read(aw8624, AW8624_REG_GLB_STATE, &reg_val);
+		/* f0 calibrate done */
+		if ((reg_val & 0x0f) == 0) {
+			aw8624_haptic_read_f0(aw8624);
+			aw8624_haptic_read_beme(aw8624);
+			break;
+		}
+		usleep_range(10000, 10500);
+		pr_debug("%s f0 cali sleep 10ms\n", __func__);
+	}
+
+	if (i == f0_cali_cnt)
+		ret = -1;
+	else
+		ret = 0;
 
 	aw8624_i2c_write_bits(aw8624,
 			      AW8624_REG_CONT_CTRL,
@@ -1805,11 +1840,13 @@ static int aw8624_haptic_f0_calibration(struct aw8624 *aw8624)
 	/* if (aw8624_haptic_get_f0(aw8624)) { */
 	/* pr_err("%s get f0 error, user defafult f0\n", __func__); */
 	/* } */
-
-	mdelay(1);
+	//Daniel 20200616 modify start
+	//mdelay(1);
 
 	aw8624_haptic_play_mode(aw8624, AW8624_HAPTIC_STANDBY_MODE);
-	aw8624_haptic_play_mode(aw8624, AW8624_HAPTIC_RAM_MODE);
+
+	//aw8624_haptic_play_mode(aw8624, AW8624_HAPTIC_RAM_MODE);
+	//Daniel 20200616 modify end
 	aw8624_haptic_stop(aw8624);
 
 	return ret;

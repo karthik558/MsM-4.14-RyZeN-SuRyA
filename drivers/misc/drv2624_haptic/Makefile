@@ -1,1 +1,1 @@
-obj-$(CONFIG_DRV2624_HAPTIC) 	+= drv2624.o parse_rtp.o
+obj-y += drv2624.o RTP_parser.o Default_param.o

@@ -15,7 +15,7 @@
 		vib_cont_zc_thr = < 0x08F8 >;
 		vib_cont_num_brk = < 3 >;
 		vib_f0_coeff = < 260 >; /*Don't modify it*/
-		vib_f0_trace_parameter = < 9 3 1 31 >;
+		vib_f0_trace_parameter = < 9 5 1 15 >; /* Daniel 20200616 modify*/
 		vib_bemf_config = < 0x10 0x08 0x23 0xf8 >;
 		vib_sw_brake = < 0x2c >;
 		vib_tset = < 0x11 >;

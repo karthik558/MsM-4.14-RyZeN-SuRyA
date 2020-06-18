@@ -3414,6 +3414,16 @@ end:
 	utils->node = panel->panel_of_node;
 }
 
+static ssize_t msm_fb_panel_info(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	ssize_t ret = 0;
+
+	snprintf(buf, PAGE_SIZE, "%s\n", g_lcd_id_mi);
+	ret = strlen(buf) + 1;
+	return ret;
+}
+
 static ssize_t msm_fb_lcd_name(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -3425,8 +3435,29 @@ static ssize_t msm_fb_lcd_name(struct device *dev,
 }
 
 static DEVICE_ATTR(lcd_name, 0664, msm_fb_lcd_name, NULL);
+static DEVICE_ATTR(panel_info, 0664, msm_fb_panel_info, NULL);
 
 static struct kobject *msm_lcd_name;
+static struct kobject *msm_panel_info;
+
+static int msm_panel_info_create_sysfs(void)
+{
+	int ret;
+
+	msm_panel_info = kset_find_obj(module_kset, "card0-DSI-1");
+	if (!msm_panel_info) {
+		pr_info("%s failed\n", __func__);
+		return -ENOENT;
+	}
+
+	ret = sysfs_create_file(msm_panel_info, &dev_attr_panel_info.attr);
+
+	if (ret) {
+		pr_info("%s failed\n", __func__);
+		kobject_del(msm_panel_info);
+	}
+	return 0;
+}
 
 static int msm_lcd_name_create_sysfs(void)
 {
@@ -3478,6 +3509,7 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 
 	strlcpy(g_lcd_id_mi, panel->name, sizeof(g_lcd_id_mi));
 	msm_lcd_name_create_sysfs();
+	msm_panel_info_create_sysfs();
 
 	/*
 	 * Set panel type to LCD as default.

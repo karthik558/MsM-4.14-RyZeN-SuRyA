@@ -48,7 +48,7 @@
 #define	DRV2624_REG_ID				0x00
 #define DRV2624_ID_MASK                         0xf0
 #define	DRV2624_ID				(0x02&DRV2624_ID_MASK)
-#define	DRV2624_SW_VERSION		"1.0.2020.4.9" //specific some effectID as square wave
+#define	DRV2624_SW_VERSION		"1.0.2020.6.17" //add constant 10ms ,change mode = ram ,playback effect_id =4
 
 #define	DRV2624_REG_STATUS			0x01
 #define	DIAG_MASK				0x80
@@ -84,6 +84,9 @@
 #define DRV2624_STBY_MODE_WITH_AUTO_BRAKE       (0x01 << 3)
 #define DRV2624_STBY_MODE_WITHOUT_AUTO_BRAKE    0x00
 #define DRV2624_REMOVE_STBY_MODE                0x00
+#define DRV2624_LOOP_MODE			(0x01 << 6)
+#define DRV2624_HYBRID_LOOP			(0x01 << 5)
+#define DRV2624_AUTO_BRK			(0x01 << 4)
 
 #define	ACTUATOR_MASK				0x80
 #define	ACTUATOR_SHIFT				7
@@ -114,6 +117,7 @@
 #define	DRV2624_REG_CAL_COMP		0x21
 #define	DRV2624_REG_CAL_BEMF		0x22
 #define	DRV2624_REG_LOOP_CONTROL	0x23
+#define MASK_FB_BRAKE_FACTOR		0x70
 #define	BEMFGAIN_MASK			0x03
 #define DRV2624_CONSTANT_GAIN 		0x72
 
@@ -125,8 +129,8 @@
 
 #define	DRV2624_REG_OL_PERIOD_H			0x2e
 #define	DRV2624_REG_OL_PERIOD_L			0x2f
-#define	DRV2624_REG_RUNNING_PERIOD_H		0x05
-#define	DRV2624_REG_RUNNING_PERIOD_L		0x06
+#define	DRV2624_REG_RUNING_PERIOD_H		0x05
+#define	DRV2624_REG_RUNING_PERIOD_L		0x06
 #define	DRV2624_REG_DIAG_K			0x30
 
 #define	GO_BIT_POLL_INTERVAL		15
@@ -204,14 +208,23 @@
 /* boot calibration build config*/
 #define DRV_BOOT_CALIB
 
-typedef enum { DRV2624_RTP_MODE =
-	    0x00, DRV2624_RAM_MODE, DRV2624_WAVE_SEQ_MODE =
-	    DRV2624_RAM_MODE, DRV2624_DIAG_MODE, DRV2624_CALIBRATION_MODE,
-	    DRV2624_NEW_RTP_MODE,
+typedef enum {
+	DRV2624_RTP_MODE =0x00,
+	DRV2624_RAM_MODE,
+	DRV2624_WAVE_SEQ_MODE = DRV2624_RAM_MODE,
+	DRV2624_DIAG_MODE,
+	DRV2624_CALIBRATION_MODE,
+	DRV2624_NEW_RTP_MODE,
 } drv2624_mode_t;
-enum actuator_type { ERM = 0, LRA
+
+enum actuator_type { 
+	ERM = 0,
+	LRA
 };
-enum loop_type { CLOSE_LOOP = 0x00, OPEN_LOOP
+
+enum loop_type {
+	CLOSE_LOOP = 0x00,
+	OPEN_LOOP
 };
 struct actuator_data {
 	unsigned char mnActuatorType;
@@ -219,17 +232,31 @@ struct actuator_data {
 	unsigned char mnOverDriveClampVoltage;
 	unsigned char mnLRAFreq;
 };
-enum wave_seq_loop { SEQ_NO_LOOP, SEQ_LOOP_ONCE, SEQ_LOOP_TWICE,
+enum wave_seq_loop {
+	SEQ_NO_LOOP,
+	SEQ_LOOP_ONCE,
+	SEQ_LOOP_TWICE,
 	SEQ_LOOP_TRIPPLE
 };
-enum wave_main_loop { MAIN_NO_LOOP, MAIN_LOOP_ONCE, MAIN_LOOP_TWICE,
-	MAIN_LOOP_3_TIMES, MAIN_LOOP_4_TIMES, MAIN_LOOP_5_TIMES,
-	MAIN_LOOP_6_TIMES, MAIN_LOOP_INFINITELY
+enum wave_main_loop {
+	MAIN_NO_LOOP,
+	MAIN_LOOP_ONCE,
+	MAIN_LOOP_TWICE,
+	MAIN_LOOP_3_TIMES,
+	MAIN_LOOP_4_TIMES,
+	MAIN_LOOP_5_TIMES,
+	MAIN_LOOP_6_TIMES,
+	MAIN_LOOP_INFINITELY
 };
-enum wave_main_scale { PERCENTAGE_100, PERCENTAGE_75, PERCENTAGE_50,
+enum wave_main_scale {
+	PERCENTAGE_100,
+	PERCENTAGE_75,
+	PERCENTAGE_50,
 	PERCENTAGE_25
 };
-enum wave_main_interval { INTERVAL_5MS, INTERVAL_1MS
+enum wave_main_interval {
+	INTERVAL_5MS,
+	INTERVAL_1MS
 };
 struct drv2624_waveform {
 	unsigned char mnEffect;
@@ -276,8 +303,10 @@ struct drv2624_constant_playinfo {
 	int magnitude;
 	unsigned char rtp_input;
 };
-enum haptics_custom_effect_param { CUSTOM_DATA_EFFECT_IDX,
-	CUSTOM_DATA_TIMEOUT_SEC_IDX, CUSTOM_DATA_TIMEOUT_MSEC_IDX,
+enum haptics_custom_effect_param {
+	CUSTOM_DATA_EFFECT_IDX,
+	CUSTOM_DATA_TIMEOUT_SEC_IDX,
+	CUSTOM_DATA_TIMEOUT_MSEC_IDX,
 	CUSTOM_DATA_LEN,
 };
 struct drv2624_data {
@@ -327,7 +356,7 @@ struct drv2624_data {
 #ifdef DRV_BOOT_CALIB
 #define DELAY_BOOT_CALIB
 #ifdef DELAY_BOOT_CALIB
-#define BOOT_CALIB_TIMER (1*1000) //ms delayed after tas2624 init
+#define BOOT_CALIB_TIMER 1*1000 //ms delayed after drv2624 init
 	struct workqueue_struct *boot_calib_workqueue;
 	struct delayed_work deblay_boot_calib_work;
 #else
