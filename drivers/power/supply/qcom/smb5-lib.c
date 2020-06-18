@@ -2308,7 +2308,19 @@ int smblib_get_prop_batt_health(struct smb_charger *chg,
 			 * If Vbatt is within 100mv(40mV) above Vfloat, then don't
 			 * treat it as overvoltage.
 			 */
-			effective_fv_uv = get_effective_result(chg->fv_votable);
+                        rc = power_supply_get_property(chg->bms_psy,
+                                                       POWER_SUPPLY_PROP_TEMP, &pval);
+                        if (rc < 0) {
+                                smblib_err(chg, "Couldn't get bms temp:%d\n", rc);
+                                return rc;
+                        }
+                        if (pval.intval>151 && pval.intval<480){
+                                smblib_dbg(chg, PR_MISC, "temp:%d is abort"
+                                           "do not  set step charge work\n", pval.intval);
+                                effective_fv_uv = 4480000;
+                        }else{
+                                effective_fv_uv = get_effective_result(chg->fv_votable);
+                        }
 			if (pval.intval >= effective_fv_uv + 100000) { //4000
 				val->intval = POWER_SUPPLY_HEALTH_OVERVOLTAGE;
 				smblib_err(chg, "battery over-voltage vbat_fg = %duV, fv = %duV\n",
