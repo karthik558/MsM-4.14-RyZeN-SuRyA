@@ -137,8 +137,8 @@
 		ti,irq-gpio = <&tlmm 30 0>;
 		ti,irq-gpio2 = <&tlmm 58 0>;
 		status = "ok";
-		ti,iv-width = <8>;
-		ti,vbat-mon = <1>;
+		ti,iv-width = <16>;
+		ti,vbat-mon = <0>;
 	};
 };
 
