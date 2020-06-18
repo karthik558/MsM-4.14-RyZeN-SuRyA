@@ -285,7 +285,7 @@ struct dsi_display {
 };
 
 static struct dsi_display *whitep_display;
-extern char g_lcd_id[128];
+extern char g_lcd_id_mi[128];
 //Update /proc/tp_info & /proc/tp_lockdown_info node
 extern void update_lct_tp_info(char *tp_info_buf, char *tp_lockdown_info_buf);
 //Set tp_lockdown_info node callback funcation
