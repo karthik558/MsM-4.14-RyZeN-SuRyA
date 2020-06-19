@@ -46,7 +46,7 @@
 #define TICKS_IN_MICRO_SECOND		1000000
 
 extern void lcd_esd_enable(bool on);
-char g_lcd_id_mi[64];
+extern char g_lcd_id_mi[64];
 
 static int panel_disp_param_send_lock(struct dsi_panel *panel, int param);
 
