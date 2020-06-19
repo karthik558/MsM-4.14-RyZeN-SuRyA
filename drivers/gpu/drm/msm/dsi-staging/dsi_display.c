@@ -5101,7 +5101,7 @@ static ssize_t dsi_display_get_whitepoint(struct device *dev,
 
 	ctrl = &display->ctrl[display->cmd_master_idx];
 
-	if (strnstr(g_lcd_id, "huaxing", strlen(g_lcd_id)) != NULL) {
+	if (strnstr(g_lcd_id_mi, "huaxing", strlen(g_lcd_id_mi)) != NULL) {
 		rc = dsi_display_write_reg_page(ctrl, 0xFF, 0x20, buf, sizeof(buf));
 		rc = dsi_display_read_reg(ctrl, 0xA1, 0x00, buf, sizeof(buf));
 	} else {
@@ -5431,7 +5431,7 @@ int lct_tp_lockdown_info_callback(void)
 	}
 
 	ctrl = &display->ctrl[display->cmd_master_idx];
-	if (strnstr(g_lcd_id, "huaxing", strlen(g_lcd_id)) != NULL) {
+	if (strnstr(g_lcd_id_mi, "huaxing", strlen(g_lcd_id_mi)) != NULL) {
 		rc = dsi_display_write_reg_page(ctrl, 0xFF, 0x21, buf, sizeof(buf));
 		rc = dsi_display_read_reg(ctrl, 0xF1, 0x00, buf, sizeof(buf));
 	} else {
