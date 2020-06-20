@@ -2108,17 +2108,19 @@ static int nvt_set_cur_value(int nvt_mode, int nvt_value)
 		break;
 	case Touch_Panel_Orientation:
 		/* 0,1,2,3 = 0, 90, 180,270 */
+            	/*
 		temp_value = xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][SET_CUR_VALUE];
 		if (temp_value == 0 || temp_value == 2) {
 			nvt_game_value[0] = 0xBA;
 			nvt_game_value[1] = 0x00;
-		} else if (temp_value == 1) {
+		} else if (temp_value == 3) {
 			nvt_game_value[0] = 0xBB;
 			nvt_game_value[1] = 0x00;
-		} else if (temp_value == 3) {
+		} else if (temp_value == 1) {
 			nvt_game_value[0] = 0xBC;
 			nvt_game_value[1] = 0x00;
 		}
+                */
 		break;
 	default:
 		/* Don't support */
