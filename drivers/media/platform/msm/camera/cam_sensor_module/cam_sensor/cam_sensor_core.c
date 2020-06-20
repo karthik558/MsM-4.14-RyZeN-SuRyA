@@ -22,6 +22,17 @@
 //#ifdef __XIAOMI_CAMERA__
 extern int wl2866d_camera_power_up(uint16_t camera_id);
 extern int wl2866d_camera_power_down(uint16_t camera_id);
+extern int wl2866d_camera_power_down_all(void);
+extern char *saved_command_line;
+static int is_camera_probed = 0;
+//[bit5 bit4 bit3 bit2 bit1 bit0]
+//[cam5 cam4 cam3 cam2 cam1 cam0]
+//camera_id 0 --> imx682
+//camera_id 1 --> ov02b1b/gc02m1b
+//camera_id 2 --> s5k3t2
+//camera_id 3 --> hi1337
+//camera_id 4 --> hi259
+//camera_id 5 --> hi847
 //#endif
 
 static void cam_sensor_update_req_mgr(
@@ -639,13 +650,13 @@ int cam_sensor_match_id(struct cam_sensor_ctrl_t *s_ctrl)
 	}
 	CAM_ERR(CAM_SENSOR, "xyz slaveaddr: 0x%x, sensor_id_reg_addr =0x%x",
 		slave_info->sensor_slave_addr,slave_info->sensor_id_reg_addr);
-	if (0xe1 == slave_info->sensor_id) {
+	if (0xe1 == slave_info->sensor_id) {//hi259
 		rc = camera_io_dev_read(
 			&(s_ctrl->io_master_info),
 			slave_info->sensor_id_reg_addr,
 			&chipid, CAMERA_SENSOR_I2C_TYPE_BYTE,
 			CAMERA_SENSOR_I2C_TYPE_BYTE);
-	} else if (0x02e0 == slave_info->sensor_id) {
+	} else if (0x02e0 == slave_info->sensor_id) {//gc02m1b
 		rc = camera_io_dev_read(
 			&(s_ctrl->io_master_info),
 			slave_info->sensor_id_reg_addr,
@@ -937,16 +948,47 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 		msm_sensor_set_module_info(s_ctrl);
 
 		CAM_INFO(CAM_SENSOR,
-			"Probe success,slot:%d,slave_addr:0x%x,sensor_id:0x%x",
+			"Probe success,slot:%d,slave_addr:0x%x,sensor_id:0x%x, camera_id=[%d]",
 			s_ctrl->soc_info.index,
 			s_ctrl->sensordata->slave_info.sensor_slave_addr,
-			s_ctrl->sensordata->slave_info.sensor_id);
-
+			s_ctrl->sensordata->slave_info.sensor_id,
+			sensordata->camera_id);
+        if (0 == sensordata->camera_id) {
+            is_camera_probed |= 1<<0;
+        } else if (1 == sensordata->camera_id) {
+            is_camera_probed |= 1<<1;
+        } else if (2 == sensordata->camera_id) {
+            is_camera_probed |= 1<<2;
+        } else if (3 == sensordata->camera_id) {
+            is_camera_probed |= 1<<3;
+        } else if (4 == sensordata->camera_id) {
+            is_camera_probed |= 1<<4;
+        } else if (5 == sensordata->camera_id) {
+            is_camera_probed |= 1<<5;
+        }
 		rc = cam_sensor_power_down(s_ctrl);
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR, "fail in Sensor Power Down");
 			goto free_power_settings;
 		}
+        if ((strnstr(saved_command_line, "androidboot.hwname=karna", strlen(saved_command_line)) != NULL)
+         || (strnstr(saved_command_line, "androidboot.hwname=surya", strlen(saved_command_line)) != NULL)) {
+            if (0x1F == is_camera_probed) {
+                CAM_ERR(CAM_SENSOR, "xyz J20C all sensor probe succese, power down multi LDO");
+                rc = wl2866d_camera_power_down_all();
+            }
+        } else if ((strnstr(saved_command_line, "androidboot.hwname=indra", strlen(saved_command_line)) != NULL)
+         || (strnstr(saved_command_line, "androidboot.hwname=arjuna", strlen(saved_command_line)) != NULL)) {
+            if (0x3F == is_camera_probed) {
+                CAM_ERR(CAM_SENSOR, "xyz J20 all sensor probe succese, power down multi LDO");
+                rc = wl2866d_camera_power_down_all();
+            }
+        }
+		if (rc < 0) {
+			CAM_ERR(CAM_SENSOR, "xyz fail in Sensor multi LDO Power Down");
+			goto free_power_settings;
+		}
+
 		/*
 		 * Set probe succeeded flag to 1 so that no other camera shall
 		 * probed on this slot
