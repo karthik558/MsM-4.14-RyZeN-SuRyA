@@ -743,6 +743,7 @@ struct smb_charger {
 	bool        reverse_charge_state;
 	unsigned int    switch_sel_gpio;
 #endif
+	bool   is_float_recheck;
 };
 enum quick_charge_type {
 	QUICK_CHARGE_NORMAL = 0,

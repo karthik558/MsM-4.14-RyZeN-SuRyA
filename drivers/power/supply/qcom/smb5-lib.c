@@ -6648,7 +6648,11 @@ static void update_sw_icl_max(struct smb_charger *chg, int pst)
 		 * limit ICL to 100mA, the USB driver will enumerate to check
 		 * if this is a SDP and appropriately set the current
 		 */
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+		if(chg->is_float_recheck)
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+					FLOAT_CURRENT_UA);
+		else
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 					SDP_100_MA);
 		break;
 	case POWER_SUPPLY_TYPE_UNKNOWN:
@@ -7031,7 +7035,8 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->cp_disable_votable, OVERHEAT_LIMIT_VOTER, false, 0);
 	vote(chg->usb_icl_votable, OVERHEAT_LIMIT_VOTER, false, 0);
 	vote(chg->usb_icl_votable, MAIN_CHG_VOTER,  false, 0);
-  
+	vote(chg->usb_icl_votable, HVDCP3_START_ICL_VOTER, false, 0);
+
 	/* write back the default FLOAT charger configuration */
 	rc = smblib_masked_write(chg, USBIN_OPTIONS_2_CFG_REG,
 				(u8)FLOAT_OPTIONS_MASK, chg->float_cfg);
@@ -7092,6 +7097,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	chg->is_qc_class_a = false;
 	chg->is_qc_class_b = false;
 	chg->high_vbus_detected = false;
+	chg->is_float_recheck = false;
 
 	pr_err("%s:", __func__);
 	if (chg->pd_verifed)
@@ -8995,7 +9001,7 @@ static void smblib_charger_type_recheck(struct work_struct *work)
 		rc = smblib_request_dpdm(chg, false);
 		if (rc < 0)
 			smblib_err(chg, "Couldn't disable DPDM rc=%d\n", rc);
-
+		chg->is_float_recheck = true;
 		msleep(500);
 	}
 
