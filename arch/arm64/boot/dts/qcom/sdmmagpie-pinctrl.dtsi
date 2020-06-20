@@ -901,6 +901,33 @@
 			};
 		};
 */
+		bq25970{
+			bq_charger_int_active: bq_charger_int_active{
+				mux {
+					pins = "gpio43";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio43";
+					drive-strength = <2>;
+				        bias-pull-down;
+				};
+			};
+			bq_charger_int_suspend: bq_charger_int_suspend {
+				mux {
+					pins = "gpio43";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio43";
+					drive-strength = <2>;
+					bias-pull-up;
+				};
+			};
+		};
+
 		qupv3_se8_2uart_pins: qupv3_se8_2uart_pins {
 			qupv3_se8_2uart_active: qupv3_se8_2uart_active {
 				mux {
