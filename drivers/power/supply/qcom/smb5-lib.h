@@ -97,6 +97,8 @@ enum print_reason {
 #define HVDCP3_START_ICL_VOTER	"HVDCP3_START_ICL_VOTER"
 #define OTG_VOTER                       "OTG_VOTER"
 
+#define QC2_UNSUPPORTED_VOTER           "QC2_UNSUPPORTED_VOTER"
+
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
 
@@ -138,12 +140,16 @@ enum hvdcp3_type {
 #define HVDCP2_CURRENT_UA		1500000
 #define HVDCP_START_CURRENT_UA		1000000
 #define HVDCP_START_CURRENT_UA_FOR_BQ	500000
+#define SUSPEND_CURRENT_UA		2000
 #define TYPEC_DEFAULT_CURRENT_UA	900000
 #define TYPEC_MEDIUM_CURRENT_UA		1500000
 #define TYPEC_HIGH_CURRENT_UA		3000000
 #define DCIN_ICL_MIN_UA			100000
 #define DCIN_ICL_MAX_UA			1500000
 #define DCIN_ICL_STEP_UA		100000
+
+/* defined for qc2_unsupported */
+#define QC2_UNSUPPORTED_UA              1500000
 
 /* used for bq charge pump solution */
 #define MAIN_CHG_VOTER			"MAIN_CHG_VOTER"
@@ -677,6 +683,7 @@ struct smb_charger {
 	int                     qc2_max_pulses;
 	enum qc2_non_comp_voltage qc2_unsupported_voltage;
 	bool			dbc_usbov;
+	bool                    qc2_unsupported;
 
 	/* extcon for VBUS / ID notification to USB for uUSB */
 	struct extcon_dev	*extcon;
@@ -712,6 +719,7 @@ struct smb_charger {
 	/* charger type recheck */
 	int			recheck_charger;
 	int			precheck_charger_type;
+	bool                    snk_debug_acc_detected;
 	struct usbpd		*pd;
 	bool			use_bq_pump;
 	/* reduce fcc for esr cal*/
