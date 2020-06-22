@@ -1106,7 +1106,9 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_PD_AUTHENTICATION:
 		chg->pd_verifed = val->intval;
-		break;
+		/*if set pd authentication auto set fastcharge mode*/
+		/*do not break here*/
+		//break;
 	case POWER_SUPPLY_PROP_FASTCHARGE_MODE:
 		power_supply_changed(chg->usb_psy);
 		if (chg->support_ffc) {
