@@ -6963,6 +6963,11 @@ static void typec_sink_removal(struct smb_charger *chg)
 			smblib_notify_usb_host(chg, false);
 		chg->otg_present = false;
 	}
+	#ifdef CONFIG_REVERSE_CHARGE
+	chg->reverse_charge_mode = false;
+	chg->reverse_charge_state = false;
+	#endif
+
 }
 
 static void typec_src_removal(struct smb_charger *chg)
@@ -7274,8 +7279,8 @@ irqreturn_t typec_state_change_irq_handler(int irq, void *data)
 	chg->typec_mode = typec_mode;
 
 #ifdef CONFIG_REVERSE_CHARGE
-	//pr_err("longcheer:%s,reverse_charge_mode=%d,typec_mode=%d\n",__func__,
-	//	chg->reverse_charge_mode,chg->typec_mode);
+	pr_err("longcheer:%s,reverse_charge_mode=%d,typec_mode=%d\n",__func__,
+		chg->reverse_charge_mode,chg->typec_mode);
 	if(chg->typec_mode == POWER_SUPPLY_TYPEC_SINK){
 		if (gpio_is_valid(chg->switch_sel_gpio)){
 			gpio_set_value(chg->switch_sel_gpio, 0);
@@ -8995,7 +9000,7 @@ void rerun_reverse_check(struct smb_charger *chg)
 
 	smblib_notify_usb_host(chg, true);
 
-	power_supply_changed(chg->usb_psy);
+	//power_supply_changed(chg->usb_psy);
 
 }
 #endif

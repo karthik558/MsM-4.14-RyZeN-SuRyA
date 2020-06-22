@@ -2077,6 +2077,8 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		break;
 #ifdef CONFIG_REVERSE_CHARGE
 	case POWER_SUPPLY_PROP_REVERSE_CHARGE_MODE:
+		if(val->intval == 0)
+			break;
 		chg->reverse_charge_mode = val->intval;
 		pr_err("longcheer,%s,reverse_charge_mode=%d,reverse_state=%d\n",
 			__func__,chg->reverse_charge_mode,chg->reverse_charge_state);
