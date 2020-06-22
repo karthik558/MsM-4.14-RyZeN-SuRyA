@@ -296,6 +296,8 @@ struct bq2597x {
 	struct power_supply_desc psy_desc;
 	struct power_supply_config psy_cfg;
 	struct power_supply *fc2_psy;
+	struct pinctrl		*pinctrl;
+        struct pinctrl_state	*pinctrl_state1;
 };
 
 static int bq_debug_flag;
@@ -2238,6 +2240,34 @@ static struct of_device_id bq2597x_charger_match_table[] = {
 //MODULE_DEVICE_TABLE(of, bq2597x_charger_match_table);
 
 
+
+static int bq_charger_int(struct bq2597x *chip)
+{
+	int ret;
+	chip->pinctrl = devm_pinctrl_get(chip->dev);
+	if (IS_ERR(chip->pinctrl)) {
+		pr_err("lct Couldn't get bq nit pinctrl rc=%d\n", PTR_ERR(chip->pinctrl));
+		chip->pinctrl = NULL;
+	}
+
+	if (chip->pinctrl) {
+		chip->pinctrl_state1 = pinctrl_lookup_state(chip->pinctrl,
+						"bq_charger_suspend");
+		if (IS_ERR(chip->pinctrl_state1)) {
+			pr_err("Couldn't get pinctrl state\n");
+			return 0;
+		}
+		ret = pinctrl_select_state(chip->pinctrl, chip->pinctrl_state1);
+		if (ret) {
+			pr_err( "cannot set bq charger int pinctrl suspend state\n");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+
 static int bq2597x_charger_probe(struct i2c_client *client,
 					const struct i2c_device_id *id)
 {
@@ -2295,6 +2325,15 @@ static int bq2597x_charger_probe(struct i2c_client *client,
 	ret = bq2597x_psy_register(bq);
 	if (ret)
 		return ret;
+
+
+	pr_err("lct client->irq=d%\n",client->irq);
+
+	ret = bq_charger_int(bq);
+	if (ret < 0) {
+		pr_err("Couldn't parse bq device tree ret=%d\n", ret);
+		return ret;
+	}
 
 	if (client->irq) {
 		ret = devm_request_threaded_irq(&client->dev, client->irq,

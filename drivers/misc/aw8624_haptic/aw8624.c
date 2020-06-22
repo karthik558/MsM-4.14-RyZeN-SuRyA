@@ -1044,15 +1044,30 @@ static unsigned char aw8624_haptic_rtp_get_fifo_afi(struct aw8624 *aw8624)
 	return ret;
 }
 
+//Daniel 20200618 modify start
+static unsigned char aw8624_haptic_rtp_get_fifo_afs(struct aw8624 *aw8624)
+{
+	unsigned char ret = 0;
+	unsigned char reg_val = 0;
+
+	aw8624_i2c_read(aw8624, AW8624_REG_SYSST, &reg_val);
+	reg_val &= AW8624_BIT_SYSST_FF_AFS;
+	ret = reg_val >> 3;
+
+	return ret;
+}
+//Daniel 20200618 modify end
+
 /*****************************************************
  *
  * rtp
  *
  *****************************************************/
+ //Daniel 20200618 modify start
 static int aw8624_haptic_rtp_init(struct aw8624 *aw8624)
 {
 	unsigned int buf_len = 0;
-
+	unsigned char glb_st = 0;
 	pr_info("%s enter\n", __func__);
 	pm_qos_add_request(&pm_qos_req_vb, PM_QOS_CPU_DMA_LATENCY,
 			   PM_QOS_VALUE_VB);
@@ -1076,7 +1091,9 @@ static int aw8624_haptic_rtp_init(struct aw8624 *aw8624)
 		aw8624_i2c_writes(aw8624, AW8624_REG_RTP_DATA,
 				  &aw8624_rtp->data[aw8624->rtp_cnt], buf_len);
 		aw8624->rtp_cnt += buf_len;
-		if (aw8624->rtp_cnt == aw8624_rtp->len) {
+		aw8624_i2c_read(aw8624, AW8624_REG_GLB_STATE, &glb_st);
+		if ((aw8624->rtp_cnt == aw8624_rtp->len) || 
+			((glb_st & 0x0f) == 0x00))  {
 			pr_info("%s: rtp update complete\n", __func__);
 			aw8624->rtp_cnt = 0;
 			break;
@@ -1092,6 +1109,7 @@ static int aw8624_haptic_rtp_init(struct aw8624 *aw8624)
 	pm_qos_remove_request(&pm_qos_req_vb);
 	return 0;
 }
+ //Daniel 20200618 modify end
 
 static int16_t aw8624_haptic_effect_strength(struct aw8624 *aw8624)
 {
@@ -2272,12 +2290,14 @@ static void aw8624_interrupt_setup(struct aw8624 *aw8624)
 			      AW8624_BIT_SYSINTM_OT_EN);
 }
 
+//Daniel 20200618 modify start
 static irqreturn_t aw8624_irq(int irq, void *data)
 {
 	struct aw8624 *aw8624 = data;
 	unsigned char reg_val = 0;
 	unsigned char dbg_val = 0;
 	unsigned int buf_len = 0;
+	unsigned char glb_st = 0;
 
 	pr_info("%s enter\n", __func__);
 	atomic_set(&aw8624->is_in_irq, 1);
@@ -2305,7 +2325,7 @@ static irqreturn_t aw8624_irq(int irq, void *data)
 	if (reg_val & AW8624_BIT_SYSINT_FF_AEI) {
 		VIB_DEBUG("aw8624 rtp fifo almost empty int");
 		if (aw8624->rtp_init) {
-			while ((!aw8624_haptic_rtp_get_fifo_afi(aw8624)) &&
+			while ((!aw8624_haptic_rtp_get_fifo_afs(aw8624)) &&
 			       (aw8624->play_mode == AW8624_HAPTIC_RTP_MODE) && !atomic_read(&aw8624->exit_in_irq)) {
 				mutex_lock(&aw8624->rtp_lock);
 				VIB_DEBUG
@@ -2327,7 +2347,9 @@ static irqreturn_t aw8624_irq(int irq, void *data)
 						  &aw8624_rtp->data[aw8624->rtp_cnt],
 						  buf_len);
 				aw8624->rtp_cnt += buf_len;
-				if (aw8624->rtp_cnt == aw8624_rtp->len) {
+				aw8624_i2c_read(aw8624, AW8624_REG_GLB_STATE, &glb_st);
+				if ((aw8624->rtp_cnt == aw8624_rtp->len) || 
+					((glb_st & 0x0f) == 0x00))  {
 					VIB_DEBUG("rtp update complete");
 					aw8624_haptic_set_rtp_aei(aw8624,
 								  false);
@@ -2362,6 +2384,7 @@ static irqreturn_t aw8624_irq(int irq, void *data)
 	VIB_FUNC_EXIT();
 	return IRQ_HANDLED;
 }
+//Daniel 20200618 modify end
 
 /*****************************************************
  *

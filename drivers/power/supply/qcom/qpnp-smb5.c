@@ -23,6 +23,10 @@
 #include <linux/qpnp/qpnp-revid.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/of_regulator.h>
+#ifdef CONFIG_REVERSE_CHARGE
+#include <linux/of_gpio.h>
+#include <linux/gpio.h>
+#endif
 #include <linux/regulator/machine.h>
 #include <linux/iio/consumer.h>
 #include <linux/pmic-voter.h>
@@ -464,6 +468,7 @@ static int smb5_charge_step_charge_init(struct smb_charger *chg,
 #define MICRO_1P5A				1500000
 #define MICRO_P1A				100000
 #define MICRO_1PA				1000000
+#define MICRO_2PA				2000000
 #define MICRO_3PA				3000000
 #define OTG_DEFAULT_DEGLITCH_TIME_MS		50
 #define DEFAULT_WD_BARK_TIME			64
@@ -552,7 +557,7 @@ static int smb5_parse_dt(struct smb5 *chip)
 	if (rc < 0)
 		chg->otg_cl_ua =
 			(chip->chg.chg_param.smb_version == PMI632_SUBTYPE)
-						? MICRO_1PA : MICRO_3PA;
+						? MICRO_1PA : MICRO_2PA;
 	rc = of_property_read_u32(node, "qcom,chg-term-src",
 			&chip->dt.term_current_src);
 	if (rc < 0)
@@ -585,6 +590,14 @@ static int smb5_parse_dt(struct smb5 *chip)
 			return rc;
 		}
 	}
+
+#ifdef CONFIG_REVERSE_CHARGE
+	chg->switch_sel_gpio = of_get_named_gpio(node, "mi,swithc-sel-gpio", 0);
+	if (!gpio_is_valid(chg->switch_sel_gpio)) {
+		pr_err("switch sel gpio error getting from OF node\n");
+		chg->switch_sel_gpio = -EINVAL;
+	}
+#endif
 
 	rc = of_property_read_u32(node, "qcom,charger-temp-max",
 			&chg->charger_temp_max);
@@ -1093,6 +1106,7 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_PD_AUTHENTICATION:
 		chg->pd_verifed = val->intval;
+		break;
 	case POWER_SUPPLY_PROP_FASTCHARGE_MODE:
 		power_supply_changed(chg->usb_psy);
 		if (chg->support_ffc) {
@@ -1739,6 +1753,9 @@ static enum power_supply_property smb5_batt_props[] = {
 	POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE,
 	POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED,
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
+#ifdef CONFIG_REVERSE_CHARGE
+	POWER_SUPPLY_PROP_REVERSE_CHARGE_MODE,
+#endif
 };
 
 #define DEBUG_ACCESSORY_TEMP_DECIDEGC	250
@@ -1901,6 +1918,11 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 		rc = smblib_get_prop_system_temp_level(chg, val);
 		break;
+#ifdef CONFIG_REVERSE_CHARGE
+	case POWER_SUPPLY_PROP_REVERSE_CHARGE_MODE:
+		val->intval =  chg->reverse_charge_mode;
+		break;
+#endif
 	default:
 		pr_err("batt power supply prop %d not supported\n", psp);
 		return -EINVAL;
@@ -1913,6 +1935,10 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 
 	return 0;
 }
+
+#ifdef CONFIG_REVERSE_CHARGE
+extern void rerun_reverse_check(struct smb_charger *chg);
+#endif
 
 static int smb5_batt_set_prop(struct power_supply *psy,
 		enum power_supply_property prop,
@@ -2047,6 +2073,16 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 			rerun_election(chg->usb_icl_votable);
 		}
 		break;
+#ifdef CONFIG_REVERSE_CHARGE
+	case POWER_SUPPLY_PROP_REVERSE_CHARGE_MODE:
+		chg->reverse_charge_mode = val->intval;
+		pr_err("longcheer,%s,reverse_charge_mode=%d,reverse_state=%d\n",
+			__func__,chg->reverse_charge_mode,chg->reverse_charge_state);
+		if(chg->reverse_charge_mode != chg->reverse_charge_state){
+			rerun_reverse_check(chg);
+		}	
+		break;
+#endif
 	default:
 		rc = -EINVAL;
 	}
@@ -2071,6 +2107,9 @@ static int smb5_batt_prop_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_DIE_HEALTH:
 	case POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED:
 	case POWER_SUPPLY_PROP_BATTERY_CHARGING_LIMITED:
+#ifdef CONFIG_REVERSE_CHARGE
+	case POWER_SUPPLY_PROP_REVERSE_CHARGE_MODE:
+#endif
 		return 1;
 	default:
 		break;
@@ -3173,6 +3212,19 @@ static int smb5_init_hw(struct smb5 *chip)
 		}
 	}
 
+	/*
+	 * 1. set 0x154a bit0 to 1 to enable detection of debug accessory in sink mode i.e. detecting Rp-Rp on both the CC pins
+	 * 2. set 0x154a bit1 to 1 to enable charging when debug access SNK mode is detected
+	 * 3. set 0x154a bit2 to 1 to select ICL based on FMB1/2 table specified in MDOS during debug access SNK mode
+	 * 4. set 0x154a bit3 to 0 to allow AICL to run (if enabled) for debug access mode
+	 * 4. set 0x154a bit4 to 0 to disable FMB
+	 */
+	rc = smblib_masked_write(chg, TYPE_C_DEBUG_ACC_SNK_CFG, 0x1F, 0x07);
+	if (rc < 0) {
+		dev_err(chg->dev, "Couldn't configure TYPE_C_DEBUG_ACC_SNK_CFG rc=%d\n", rc);
+		return rc;
+	}
+
 	return rc;
 }
 
@@ -3845,6 +3897,10 @@ static int smb5_probe(struct platform_device *pdev)
 	chg->connector_health = -EINVAL;
 	chg->otg_present = false;
 	chg->main_fcc_max = -EINVAL;
+#ifdef CONFIG_REVERSE_CHARGE
+	chg->reverse_charge_mode = false;
+	chg->reverse_charge_state = false;
+#endif
 
 	chg->regmap = dev_get_regmap(chg->dev->parent, NULL);
 	if (!chg->regmap) {
@@ -3870,6 +3926,24 @@ static int smb5_probe(struct platform_device *pdev)
 				smblib_lpd_recheck_timer);
 	else
 		return -EPROBE_DEFER;
+
+#ifdef CONFIG_REVERSE_CHARGE
+	if (gpio_is_valid(chg->switch_sel_gpio)) {
+		rc = gpio_request(chg->switch_sel_gpio,
+				"mi_switch_sel");
+		if (rc) {
+			chg->switch_sel_gpio = -EINVAL;
+			pr_err("%s: unable to request switch sel gpio [%d]\n",
+					__func__, chg->switch_sel_gpio);
+			
+		} else {
+			gpio_direction_output(chg->switch_sel_gpio, 0);
+		}
+	} else {
+		chg->switch_sel_gpio = -EINVAL;
+		pr_err(	"%s: switch sel not provided\n", __func__);
+	}
+#endif
 
 	rc = smblib_init(chg);
 	if (rc < 0) {
@@ -4038,6 +4112,10 @@ static int smb5_probe(struct platform_device *pdev)
 free_irq:
 	smb5_free_interrupts(chg);
 cleanup:
+#ifdef CONFIG_REVERSE_CHARGE
+	if (chg->switch_sel_gpio > 0)
+		gpio_free(chg->switch_sel_gpio);
+#endif
 	smblib_deinit(chg);
 	platform_set_drvdata(pdev, NULL);
 
@@ -4061,6 +4139,10 @@ static int smb5_remove(struct platform_device *pdev)
 				BC1P2_SRC_DETECT_BIT, BC1P2_SRC_DETECT_BIT);
 
 	smb5_free_interrupts(chg);
+#ifdef CONFIG_REVERSE_CHARGE
+	if (chg->switch_sel_gpio > 0)
+		gpio_free(chg->switch_sel_gpio);
+#endif
 	smblib_deinit(chg);
 	platform_set_drvdata(pdev, NULL);
 	return 0;

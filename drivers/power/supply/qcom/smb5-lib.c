@@ -28,6 +28,9 @@
 #include "step-chg-jeita.h"
 #include "storm-watch.h"
 #include "schgm-flash.h"
+#ifdef CONFIG_REVERSE_CHARGE
+#include <linux/gpio.h>
+#endif
 
 #if CONFIG_TOUCHSCREEN_COMMON
 typedef struct touchscreen_usb_piugin_data{
@@ -184,7 +187,7 @@ int smblib_icl_override(struct smb_charger *chg, enum icl_override_mode  mode)
 {
 	int rc;
 	u8 usb51_mode, icl_override, apsd_override;
-
+	smblib_dbg(chg, PR_OEM, " mode=%d\n", mode);
 	switch (mode) {
 	case SW_OVERRIDE_USB51_MODE:
 		usb51_mode = 0;
@@ -1386,6 +1389,11 @@ static void smblib_uusb_removal(struct smb_charger *chg)
 	if (chg->cp_disable_votable)
 		vote(chg->cp_disable_votable, SW_THERM_REGULATION_VOTER,
 								false, 0);
+
+	/* reconfigure allowed voltage for HVDCP */
+	rc = smblib_usb_pd_adapter_allowance_override(chg, CONTINUOUS);
+	if (rc < 0)
+		smblib_err(chg, "Couldn't set CONTINUOUS rc=%d\n", rc);
 
 	/* reset USBOV votes and cancel work */
 	cancel_delayed_work_sync(&chg->usbov_dbc_work);
@@ -2984,6 +2992,12 @@ static void smblib_hvdcp_adaptive_voltage_change(struct smb_charger *chg)
 	u8 stat;
 
 	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP) {
+		if (chg->qc2_unsupported) {
+			smblib_hvdcp_set_fsw(chg, QC_5V_BIT);
+			power_supply_changed(chg->usb_main_psy);
+			return;
+		}
+
 		rc = smblib_read(chg, QC_CHANGE_STATUS_REG, &stat);
 		if (rc < 0) {
 			smblib_err(chg,
@@ -4146,6 +4160,8 @@ static int smblib_get_prop_ufp_mode(struct smb_charger *chg)
 {
 	int rc;
 	u8 stat;
+	union power_supply_propval val = {0, };
+	int usb_present = 0;
 
 	rc = smblib_read(chg, TYPE_C_SNK_STATUS_REG, &stat);
 	if (rc < 0) {
@@ -4163,12 +4179,32 @@ static int smblib_get_prop_ufp_mode(struct smb_charger *chg)
 		return POWER_SUPPLY_TYPEC_SOURCE_HIGH;
 	case SNK_RP_SHORT_BIT:
 		return POWER_SUPPLY_TYPEC_NON_COMPLIANT;
-	case SNK_DAM_500MA_BIT:
-	case SNK_DAM_1500MA_BIT:
-	case SNK_DAM_3000MA_BIT:
-		return POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY;
-	default:
 		break;
+	}
+
+	/* workaround for scp cable or similar A TO C cables */
+	rc = smblib_read(chg, TYPE_C_SNK_DEBUG_ACC_STATUS_REG, &stat);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't read TYPE_C_STATUS_1 rc=%d\n", rc);
+		pr_err("[%s] return POWER_SUPPLY_TYPEC_NONE\n", __func__);
+		return POWER_SUPPLY_TYPEC_NONE;
+	}
+
+	rc = smblib_get_prop_usb_present(chg, &val);
+	if (rc < 0)
+		smblib_err(chg, "Couldn't get usb present rc = %d\n", rc);
+	else
+		usb_present = val.intval;
+
+	smblib_dbg(chg, PR_OEM, "snk_debug_acc_detected=%d usb_present=%d\n", chg->snk_debug_acc_detected, usb_present);
+
+	if (chg->snk_debug_acc_detected && usb_present) {
+		return POWER_SUPPLY_TYPEC_SOURCE_DEFAULT;
+	}
+
+	if (stat & SNK_DEBUG_ACC_RPSTD_PRSTD_BIT && usb_present) {
+		chg->snk_debug_acc_detected = true;
+		return POWER_SUPPLY_TYPEC_SOURCE_DEFAULT;
 	}
 
 	return POWER_SUPPLY_TYPEC_NONE;
@@ -5680,6 +5716,7 @@ unsuspend_input:
 
 	/* Workaround for non-QC2.0-compliant chargers follows */
 	if (!chg->qc2_unsupported_voltage &&
+			!chg->qc2_unsupported &&
 			apsd->pst == POWER_SUPPLY_TYPE_USB_HVDCP) {
 		rc = smblib_read(chg, QC_CHANGE_STATUS_REG, &stat);
 		if (rc < 0)
@@ -5724,7 +5761,22 @@ unsuspend_input:
 			smblib_err(chg, "Couldn't turn off SUSPEND_ON_COLLAPSE_USBIN_BIT rc=%d\n",
 					rc);
 
-		smblib_rerun_apsd(chg);
+		//smblib_rerun_apsd(chg);
+
+		pr_info("qc2_unsupported charger detected\n");
+		rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
+		if (rc < 0)
+			pr_err("Failed to force 5V\n");
+		rc = smblib_usb_pd_adapter_allowance_override(chg, FORCE_5V);
+		if (rc < 0)
+			pr_err("Failed to set adapter allowance to 5V\n");
+		rc = smblib_set_opt_switcher_freq(chg, chg->chg_freq.freq_5V);
+		if (rc < 0)
+			pr_err("Failed to set chg_freq.freq_5V\n");
+		vote(chg->usb_icl_votable, QC2_UNSUPPORTED_VOTER, true,
+				QC2_UNSUPPORTED_UA);
+		chg->qc2_unsupported = true;
+		pr_err("[%s] enter! qc2_unsupported=%d\n", chg->qc2_unsupported);
 	}
 
 	return IRQ_HANDLED;
@@ -6515,19 +6567,8 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 				chg->already_start_step_charge_work = true;
 			}
 		}
-
-		/* QC3.5 detection timeout */
-		if (!chg->apsd_ext_timeout &&
-				!timer_pending(&chg->apsd_timer)) {
-			smblib_dbg(chg, PR_MISC,
-				"APSD Extented timer started at %lld\n",
-				jiffies_to_msecs(jiffies));
-
-			mod_timer(&chg->apsd_timer,
-				msecs_to_jiffies(APSD_EXTENDED_TIMEOUT_MS)
-				+ jiffies);
-		}
-	} else if (apsd_result->bit & QC_2P0_BIT) {
+	} else if ((apsd_result->bit & QC_2P0_BIT)
+			&& (!chg->qc2_unsupported)) {
 		pr_info("force 9V for QC2 charger\n");
 		rc = smblib_force_vbus_voltage(chg, FORCE_9V_BIT);
 		if (rc < 0)
@@ -6645,7 +6686,11 @@ static void update_sw_icl_max(struct smb_charger *chg, int pst)
 		 * limit ICL to 100mA, the USB driver will enumerate to check
 		 * if this is a SDP and appropriately set the current
 		 */
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+		if(chg->is_float_recheck)
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+					FLOAT_CURRENT_UA);
+		else
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 					SDP_100_MA);
 		break;
 	case POWER_SUPPLY_TYPE_UNKNOWN:
@@ -6985,6 +7030,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->fcc_votable, CLASSA_QC_FCC_VOTER, false, 0);
 	vote(chg->usb_icl_votable, QC_A_CP_ICL_MAX_VOTER, false, 0);
 	vote(chg->usb_icl_votable, PD_VERIFED_VOTER, false, 0);
+	vote(chg->usb_icl_votable, QC2_UNSUPPORTED_VOTER, false, 0);
 
 	/* Remove SW thermal regulation WA votes */
 	vote(chg->usb_icl_votable, SW_THERM_REGULATION_VOTER, false, 0);
@@ -7028,7 +7074,8 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->cp_disable_votable, OVERHEAT_LIMIT_VOTER, false, 0);
 	vote(chg->usb_icl_votable, OVERHEAT_LIMIT_VOTER, false, 0);
 	vote(chg->usb_icl_votable, MAIN_CHG_VOTER,  false, 0);
-  
+	vote(chg->usb_icl_votable, HVDCP3_START_ICL_VOTER, false, 0);
+
 	/* write back the default FLOAT charger configuration */
 	rc = smblib_masked_write(chg, USBIN_OPTIONS_2_CFG_REG,
 				(u8)FLOAT_OPTIONS_MASK, chg->float_cfg);
@@ -7089,7 +7136,10 @@ static void typec_src_removal(struct smb_charger *chg)
 	chg->is_qc_class_a = false;
 	chg->is_qc_class_b = false;
 	chg->high_vbus_detected = false;
-
+	chg->is_float_recheck = false;
+	chg->qc2_unsupported = false;
+	chg->recheck_charger = false;
+	chg->snk_debug_acc_detected = false;
 	pr_err("%s:", __func__);
 	if (chg->pd_verifed)
 		chg->pd_verifed = false;
@@ -7222,6 +7272,20 @@ irqreturn_t typec_state_change_irq_handler(int irq, void *data)
 			&& (typec_mode != chg->typec_mode))
 		smblib_handle_rp_change(chg, typec_mode);
 	chg->typec_mode = typec_mode;
+
+#ifdef CONFIG_REVERSE_CHARGE
+	//pr_err("longcheer:%s,reverse_charge_mode=%d,typec_mode=%d\n",__func__,
+	//	chg->reverse_charge_mode,chg->typec_mode);
+	if(chg->typec_mode == POWER_SUPPLY_TYPEC_SINK){
+		if (gpio_is_valid(chg->switch_sel_gpio)){
+			gpio_set_value(chg->switch_sel_gpio, 0);
+		}
+
+		chg->reverse_charge_mode = false;
+		chg->reverse_charge_state = false;
+	}
+#endif		
+
 
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: cc-state-change; Type-C %s detected\n",
 				smblib_typec_mode_name[chg->typec_mode]);
@@ -8906,6 +8970,36 @@ static void smblib_dual_role_check_work(struct work_struct *work)
 	vote(chg->awake_votable, DR_SWAP_VOTER, false, 0);
 }
 
+
+#ifdef CONFIG_REVERSE_CHARGE
+void rerun_reverse_check(struct smb_charger *chg)
+{
+	chg->reverse_charge_state = chg->reverse_charge_mode;
+
+	smblib_notify_usb_host(chg, false);
+
+	pr_err("longcheer:%s,reverse_charge_mode=%d,typec_mode=%d\n",__func__,
+		chg->reverse_charge_mode,chg->typec_mode);
+	if(chg->reverse_charge_mode &&(chg->typec_mode == POWER_SUPPLY_TYPEC_SINK)){
+		if (gpio_is_valid(chg->switch_sel_gpio)){
+			gpio_set_value(chg->switch_sel_gpio, 1);
+		}
+	}else{
+		if (gpio_is_valid(chg->switch_sel_gpio)){
+			gpio_set_value(chg->switch_sel_gpio, 0);
+		}
+	}
+
+
+	msleep(500);
+
+	smblib_notify_usb_host(chg, true);
+
+	power_supply_changed(chg->usb_psy);
+
+}
+#endif
+
 static void smblib_charger_type_recheck(struct work_struct *work)
 {
 	struct smb_charger *chg = container_of(work, struct smb_charger,
@@ -8922,11 +9016,13 @@ static void smblib_charger_type_recheck(struct work_struct *work)
 		check_count--;
 	last_charger_type = chg->real_charger_type;
 
-	if ((chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP) ||
-			(chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3))
+	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP)
 		power_supply_changed(chg->usb_psy);
 
-	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3 ||
+	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3P5 ||
+		chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3 ||
+			chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP ||
+			chg->real_charger_type == POWER_SUPPLY_TYPE_USB_CDP ||
 			chg->pd_active || (check_count >= TYPE_RECHECK_COUNT) ||
 			((chg->real_charger_type == POWER_SUPPLY_TYPE_USB_FLOAT) &&
 				(chg->typec_mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER))) {
@@ -8948,12 +9044,9 @@ static void smblib_charger_type_recheck(struct work_struct *work)
 		rc = smblib_request_dpdm(chg, false);
 		if (rc < 0)
 			smblib_err(chg, "Couldn't disable DPDM rc=%d\n", rc);
-
+		chg->is_float_recheck = true;
 		msleep(500);
 	}
-
-	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP)
-		chg->hvdcp_recheck_status = true;
 
 	smblib_rerun_apsd_if_required(chg);
 
@@ -9205,6 +9298,8 @@ int smblib_init(struct smb_charger *chg)
 	chg->fake_batt_status = -EINVAL;
 	chg->sink_src_mode = UNATTACHED_MODE;
 	chg->jeita_configured = false;
+	chg->qc2_unsupported = false;
+	chg->snk_debug_acc_detected = false;
 	chg->sec_chg_selected = POWER_SUPPLY_CHARGER_SEC_NONE;
 	chg->cp_reason = POWER_SUPPLY_CP_NONE;
 	chg->thermal_status = TEMP_BELOW_RANGE;
