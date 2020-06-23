@@ -113,6 +113,7 @@ extern const uint16_t gesture_key_array[];
 #define NVT_TOUCH_ESD_PROTECT 0
 #define NVT_TOUCH_ESD_CHECK_PERIOD 1500	/* ms */
 #define NVT_TOUCH_WDT_RECOVERY 1
+#define NVT_TOUCH_ESD_DISP_RECOVERY 1
 
 //enable 'check touch vendor' feature
 #define CHECK_TOUCH_VENDOR
@@ -259,6 +260,24 @@ typedef enum {
 	NVTWRITE = 0,
 	NVTREAD  = 1
 } NVT_SPI_RW;
+
+#if NVT_TOUCH_ESD_DISP_RECOVERY
+#define ILM_CRC_FLAG        0x01
+#define CRC_DONE            0x04
+#define F2C_RW_READ         0x00
+#define F2C_RW_WRITE        0x01
+#define BIT_F2C_EN          0
+#define BIT_F2C_RW          1
+#define BIT_CPU_IF_ADDR_INC 2
+#define BIT_CPU_POLLING_EN  5
+#define FFM2CPU_CTL         0x3F280
+#define F2C_LENGTH          0x3F283
+#define CPU_IF_ADDR         0x3F284
+#define FFM_ADDR            0x3F286
+#define CP_TP_CPU_REQ       0x3F291
+#define TOUCH_DATA_ADDR     0x20000
+#define DISP_OFF_ADDR       0x2800
+#endif /* NVT_TOUCH_ESD_DISP_RECOVERY */
 
 //---extern structures---
 extern struct nvt_ts_data *ts;
