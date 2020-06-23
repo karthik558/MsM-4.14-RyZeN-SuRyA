@@ -324,6 +324,19 @@
 				qcom,mdss-dsi-dispparam-lcd-hbm-off-command = [
 					15 01 00 00 00 00 02 51 B8
 				];
+				qcom,mdss-dsi-dispparam-hbm-on-command = [
+					15 01 00 00 00 00 02 51 E6
+				];
+				qcom,mdss-dsi-dispparam-hbm-off-command = [
+					15 01 00 00 00 00 02 51 B8
+				];
+				qcom,mdss-dsi-hbm1-on-command = [
+					15 01 00 00 00 00 02 51 E6
+				];
+				qcom,mdss-dsi-hbm2-on-command = [
+					15 01 00 00 00 00 02 51 FF
+				];
+
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
@@ -335,6 +348,14 @@
 				qcom,mdss-dsi-dispparam-lcd-hbm-l1-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-dispparam-lcd-hbm-l2-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-dispparam-lcd-hbm-off-command-state = "dsi_lp_mode";
+
+				qcom,mdss-dsi-dispparam-hbm-on-command-state = "dsi_lp_mode";
+				qcom,mdss-dsi-hbm1-on-command-state = "dsi_lp_mode";
+				qcom,mdss-dsi-hbm2-on-command-state = "dsi_lp_mode";
+				qcom,mdss-dsi-dispparam-hbm-off-command-state = "dsi_lp_mode";
+
+
+
 
 				//delay dimming on
 				qcom,mdss-dsi-dispparam-dimmingon-command = [39 01 00 00 01 00 02 53 2C];

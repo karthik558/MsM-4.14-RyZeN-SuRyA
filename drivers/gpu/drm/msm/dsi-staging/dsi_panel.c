@@ -4570,17 +4570,17 @@ static int panel_disp_param_send_lock(struct dsi_panel *panel, int param)
 		pr_info("hbm on\n");
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_HBM_ON);
 		break;
-	case 0x20000:
-		pr_info("hbm fod on\n");
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_HBM_FOD_ON);
+	case 0xA0000:
+		pr_info("lcd hbm off\n");
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_HBM_OFF);
 		break;
-	case 0x30000:
-		pr_info("hbm fod to normal mode\n");
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_HBM_FOD2NORM);
+	case 0xB0000:
+		pr_info("lcd hbm l1 mode\n");
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_HBM1_ON);
 		break;
-	case 0xE0000:
-		pr_info("hbm fod off\n");
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_HBM_FOD_OFF);
+	case 0xC0000:
+		pr_info("lcd hbm l2 mode\n");
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_HBM2_ON);
 		break;
 	case 0xF0000:
 		pr_info("hbm off\n");
