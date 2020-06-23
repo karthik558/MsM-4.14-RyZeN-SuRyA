@@ -74,18 +74,18 @@ unsigned char last_result_byte = RESULT_SUCCESS;
 unsigned char MANID[2] = {0x00};
 
 // mi add
-unsigned char flag_mi_romid;
-unsigned char flag_mi_status;
-unsigned char flag_mi_page0_data;
-unsigned char flag_mi_page1_data;
-unsigned char flag_mi_counter;
-unsigned char flag_mi_auth_result;
+unsigned char flag_mi_romid = 0;
+unsigned char flag_mi_status = 0;
+unsigned char flag_mi_page0_data = 0;
+unsigned char flag_mi_page1_data = 0;
+unsigned char flag_mi_counter = 0;
+unsigned char flag_mi_auth_result = 0;
 unsigned char mi_romid[8] = {0x00};
 unsigned char mi_status[8] = {0x00};
 unsigned char mi_page0_data[16] = {0x00};
 unsigned char mi_page1_data[16] = {0x00};
 unsigned char mi_counter[16] = {0x00};
-int mi_auth_result;
+int mi_auth_result = 0x00;
 
 
 unsigned char crc_low_first(unsigned char *ptr, unsigned char len)
