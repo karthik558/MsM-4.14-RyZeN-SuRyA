@@ -78,6 +78,7 @@ struct qg_dt {
 	bool			fvss_enable;
 	bool			multi_profile_load;
 	bool			tcss_enable;
+	bool			software_optimize_ffc_qg_iterm;
 	bool			bass_enable;
 };
 

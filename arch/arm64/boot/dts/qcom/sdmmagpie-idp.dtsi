@@ -413,6 +413,7 @@
 	qcom,s3-entry-fifo-length = <2>;
 	qcom,qg-vadc = <&pm6150_vadc>;
 	qcom,qg-ext-sns;
+	mi,software-optimize-ffc-qg-iterm;
 };
 
 &pm6150_charger {
