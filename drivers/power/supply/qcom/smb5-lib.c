@@ -2123,6 +2123,7 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	union power_supply_propval batt_capa ={0,};
 	bool usb_online, dc_online;
 	u8 stat;
+	int batt_health;
 	int rc, suspend = 0;
 
 	if (chg->use_bq_pump && !chg->six_pin_step_charge_enable
@@ -2172,6 +2173,14 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 		return rc;
 	}
 	dc_online = (bool)pval.intval;
+
+	rc = smblib_get_prop_batt_health(chg, &pval);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't get batt health property rc=%d\n",
+			rc);
+		return rc;
+	}
+	batt_health = pval.intval;
 
 	rc = smblib_get_prop_from_bms(chg,
 			POWER_SUPPLY_PROP_CAPACITY, &batt_capa);
@@ -2237,6 +2246,12 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	if (is_client_vote_enabled_locked(chg->usb_icl_votable,
 						CHG_TERMINATION_VOTER)) {
 		val->intval = POWER_SUPPLY_STATUS_FULL;
+		return 0;
+	}
+
+	if((POWER_SUPPLY_HEALTH_COOL == batt_health || POWER_SUPPLY_HEALTH_WARM == batt_health || POWER_SUPPLY_HEALTH_OVERHEAT == batt_health || POWER_SUPPLY_HEALTH_OVERVOLTAGE == batt_health)
+		&& val->intval == POWER_SUPPLY_STATUS_FULL){
+		val->intval = POWER_SUPPLY_STATUS_CHARGING;
 		return 0;
 	}
 
@@ -2339,7 +2354,7 @@ int smblib_get_prop_batt_health(struct smb_charger *chg,
                                            "do not  set step charge work\n", pval.intval);
                                 effective_fv_uv = 4480000;
                         }else{
-                                effective_fv_uv = get_effective_result(chg->fv_votable);
+                                effective_fv_uv = get_effective_result_locked(chg->fv_votable);
                         }
 			if (pval.intval >= effective_fv_uv + 100000) { //4000
 				val->intval = POWER_SUPPLY_HEALTH_OVERVOLTAGE;
