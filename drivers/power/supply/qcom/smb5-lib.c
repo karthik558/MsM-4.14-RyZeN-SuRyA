@@ -9021,15 +9021,51 @@ static void smblib_dual_role_check_work(struct work_struct *work)
 }
 
 
+
 #ifdef CONFIG_REVERSE_CHARGE
+static void lct_vbus_enable(struct smb_charger *chg, bool enable)
+{
+	int rc = 0;
+
+	if (enable) {
+		smblib_dbg(chg, PR_OTG, "enabling VBUS in OTG mode\n");
+		rc = smblib_masked_write(chg, DCDC_CMD_OTG_REG,
+					OTG_EN_BIT, OTG_EN_BIT);
+		if (rc < 0) {
+			smblib_err(chg,
+				"Couldn't enable VBUS in OTG mode rc=%d\n", rc);
+			return;
+		}
+
+	} else {
+		smblib_dbg(chg, PR_OTG, "disabling VBUS in OTG mode\n");
+		rc = smblib_masked_write(chg, DCDC_CMD_OTG_REG,
+					OTG_EN_BIT, 0);
+		if (rc < 0) {
+			smblib_err(chg,
+				"Couldn't disable VBUS in OTG mode rc=%d\n",
+				rc);
+			return;
+		}
+	}
+
+}
+
 void rerun_reverse_check(struct smb_charger *chg)
 {
-	chg->reverse_charge_state = chg->reverse_charge_mode;
-
-	smblib_notify_usb_host(chg, false);
+	int rc;
+	if(chg->reverse_charge_state != chg->reverse_charge_mode)
+		chg->reverse_charge_state = chg->reverse_charge_mode;
 
 	pr_err("longcheer:%s,reverse_charge_mode=%d,typec_mode=%d\n",__func__,
 		chg->reverse_charge_mode,chg->typec_mode);
+	lct_vbus_enable(chg, false);
+
+	rc = smblib_set_charge_param(chg, &chg->param.otg_cl, chg->otg_chg_current);
+	if (rc < 0) {
+		pr_err("Couldn't set otg current limit rc=%d\n", rc);
+	}
+
 	if(chg->reverse_charge_mode &&(chg->typec_mode == POWER_SUPPLY_TYPEC_SINK)){
 		if (gpio_is_valid(chg->switch_sel_gpio)){
 			gpio_set_value(chg->switch_sel_gpio, 1);
@@ -9043,9 +9079,7 @@ void rerun_reverse_check(struct smb_charger *chg)
 
 	msleep(500);
 
-	smblib_notify_usb_host(chg, true);
-
-	//power_supply_changed(chg->usb_psy);
+	lct_vbus_enable(chg, true);
 
 }
 #endif
