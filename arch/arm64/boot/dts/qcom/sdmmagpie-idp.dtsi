@@ -404,7 +404,7 @@
 	qcom,cl-feedback-on;
 	qcom,tcss-enable;
 	qcom,vbatt-cutoff-mv = <3400>;
-	qcom,vbatt-low-mv = <3300>;
+	qcom,vbatt-low-mv = <3500>;
 	qcom,vbatt-low-cold-mv = <3700>;
 	qcom,vbatt-empty-mv = <3000>;
 	qcom,vbatt-empty-cold-mv = <3000>;
