@@ -39,7 +39,7 @@
 extern touchscreen_usb_plugin_data_t g_touchscreen_usb_pulgin;
 #endif
 
-struct timeval start, end;
+static struct timeval start, end;
 const struct firmware *fw_entry;
 static size_t fw_need_write_size;
 static uint8_t *fwbuf;
@@ -99,7 +99,7 @@ static int32_t nvt_download_init(void)
 	//NVT_LOG("NVT_TRANSFER_LEN = 0x%06X\n", NVT_TRANSFER_LEN);
 
 	if (fwbuf == NULL) {
-		fwbuf = (uint8_t *)kzalloc((NVT_TRANSFER_LEN+1), GFP_KERNEL);
+		fwbuf = (uint8_t *)kzalloc((NVT_TRANSFER_LEN + 1 + DUMMY_BYTES), GFP_KERNEL);
 		if (fwbuf == NULL) {
 			NVT_ERR("kzalloc for fwbuf failed!\n");
 			return -ENOMEM;
@@ -735,6 +735,217 @@ static void nvt_set_bld_hw_crc(void)
 
 /*******************************************************
 Description:
+	Novatek touchscreen read BLD hw crc info function.
+This function will check crc results from register.
+
+return:
+	n.a.
+*******************************************************/
+static void nvt_read_bld_hw_crc(void)
+{
+	uint8_t buf[8] = {0};
+	uint32_t g_crc = 0, r_crc = 0;
+
+	/* CRC Flag */
+	nvt_set_page(ts->mmap->BLD_ILM_DLM_CRC_ADDR);
+	buf[0] = ts->mmap->BLD_ILM_DLM_CRC_ADDR & 0x7F;
+	buf[1] = 0x00;
+	CTP_SPI_READ(ts->client, buf, 2);
+	NVT_ERR("crc_done = %d, ilm_crc_flag = %d, dlm_crc_flag = %d\n",
+			(buf[1] >> 2) & 0x01, (buf[1] >> 0) & 0x01, (buf[1] >> 1) & 0x01);
+
+	/* ILM CRC */
+	nvt_set_page(ts->mmap->G_ILM_CHECKSUM_ADDR);
+	buf[0] = ts->mmap->G_ILM_CHECKSUM_ADDR & 0x7F;
+	buf[1] = 0x00;
+	buf[2] = 0x00;
+	buf[3] = 0x00;
+	buf[4] = 0x00;
+	CTP_SPI_READ(ts->client, buf, 5);
+	g_crc = buf[1] | (buf[2] << 8) | (buf[3] << 16) | (buf[4] << 24);
+
+	nvt_set_page(ts->mmap->R_ILM_CHECKSUM_ADDR);
+	buf[0] = ts->mmap->R_ILM_CHECKSUM_ADDR & 0x7F;
+	buf[1] = 0x00;
+	buf[2] = 0x00;
+	buf[3] = 0x00;
+	buf[4] = 0x00;
+	CTP_SPI_READ(ts->client, buf, 5);
+	r_crc = buf[1] | (buf[2] << 8) | (buf[3] << 16) | (buf[4] << 24);
+
+	NVT_ERR("ilm: bin crc = 0x%08X, golden = 0x%08X, result = 0x%08X\n",
+			bin_map[0].crc, g_crc, r_crc);
+
+	/* DLM CRC */
+	nvt_set_page(ts->mmap->G_DLM_CHECKSUM_ADDR);
+	buf[0] = ts->mmap->G_DLM_CHECKSUM_ADDR & 0x7F;
+	buf[1] = 0x00;
+	buf[2] = 0x00;
+	buf[3] = 0x00;
+	buf[4] = 0x00;
+	CTP_SPI_READ(ts->client, buf, 5);
+	g_crc = buf[1] | (buf[2] << 8) | (buf[3] << 16) | (buf[4] << 24);
+
+	nvt_set_page(ts->mmap->R_DLM_CHECKSUM_ADDR);
+	buf[0] = ts->mmap->R_DLM_CHECKSUM_ADDR & 0x7F;
+	buf[1] = 0x00;
+	buf[2] = 0x00;
+	buf[3] = 0x00;
+	buf[4] = 0x00;
+	CTP_SPI_READ(ts->client, buf, 5);
+	r_crc = buf[1] | (buf[2] << 8) | (buf[3] << 16) | (buf[4] << 24);
+
+	NVT_ERR("dlm: bin crc = 0x%08X, golden = 0x%08X, result = 0x%08X\n",
+			bin_map[1].crc, g_crc, r_crc);
+
+	return;
+}
+
+#if NVT_TOUCH_ESD_DISP_RECOVERY
+static int32_t nvt_check_crc_done_ilm_err(void)
+{
+    uint8_t buf[8] = {0};
+
+    nvt_set_page(ts->mmap->BLD_ILM_DLM_CRC_ADDR);
+    buf[0] = ts->mmap->BLD_ILM_DLM_CRC_ADDR & 0x7F;
+    buf[1] = 0x00;
+    CTP_SPI_READ(ts->client, buf, 2);
+
+    NVT_ERR("CRC DONE, ILM DLM FLAG = 0x%02X\n", buf[1]);
+    if (((buf[1] & ILM_CRC_FLAG) && (buf[1] & CRC_DONE)) ||
+		(buf[1] == 0xFE)) {
+	return 1;
+    } else {
+	return 0;
+    }
+}
+
+static int32_t nvt_f2c_read_write(uint8_t F2C_RW, uint32_t DDIC_REG_ADDR, uint16_t len, uint8_t *data)
+{
+    uint8_t buf[8] = {0};
+    uint8_t retry = 0;
+    uint8_t f2c_control = 0;
+    uint32_t f2c_retry = 0;
+    uint32_t retry_max = 5;
+    int32_t ret = 0;
+
+    nvt_sw_reset_idle();
+
+    //Setp1: Set REG CPU_IF_ADDR[15:0]
+    nvt_set_page(CPU_IF_ADDR);
+    buf[0] = CPU_IF_ADDR & 0x7F;
+    buf[1] = (DDIC_REG_ADDR) & 0xFF;
+    buf[2] = (DDIC_REG_ADDR >> 8) & 0xFF;
+    CTP_SPI_WRITE(ts->client, buf, 3);
+
+
+    //Step2: Set REG FFM_ADDR[15:0]
+    nvt_set_page(FFM_ADDR);
+    buf[0] = FFM_ADDR & 0x7F;
+    buf[1] = (TOUCH_DATA_ADDR) & 0xFF;
+    buf[2] = (TOUCH_DATA_ADDR >> 8) & 0xFF;
+    buf[3] = 0x00;
+    if (ts->hw_crc > 1) {
+	CTP_SPI_WRITE(ts->client, buf, 4);
+    } else {
+	CTP_SPI_WRITE(ts->client, buf, 3);
+	}
+
+    //Step3: Write Data to TOUCH_DATA_ADDR
+    nvt_write_addr(TOUCH_DATA_ADDR, *data);
+
+    //Step4: Set REG F2C_LENGT[H7:0]
+    nvt_write_addr(F2C_LENGTH, len);
+
+	//Enable CP_TP_CPU_REQ
+	nvt_write_addr(CP_TP_CPU_REQ, 0x01);
+
+nvt_f2c_retry:
+    //Step5: Set REG CPU_Polling_En, F2C_RW, CPU_IF_ADDR_INC, F2C_EN
+    nvt_set_page(FFM2CPU_CTL);
+    buf[0] = FFM2CPU_CTL & 0x7F;
+    buf[1] = 0xFF;
+    ret = CTP_SPI_READ(ts->client, buf,  1 + len);//1 is AddrL
+    if (ret) {
+	NVT_ERR("Read FFM2CPU control failed!\n");
+	return ret;
+    }
+
+    f2c_control = buf[1] |
+	(0x01 << BIT_F2C_EN) |
+	(0x01 << BIT_CPU_IF_ADDR_INC) |
+	(0x01 << BIT_CPU_POLLING_EN);
+
+    if (F2C_RW == F2C_RW_READ) {
+	f2c_control = f2c_control & (~(1 << BIT_F2C_RW));
+    } else if (F2C_RW == F2C_RW_WRITE) {
+	f2c_control = f2c_control | (1 << BIT_F2C_RW);
+    }
+
+    nvt_write_addr(FFM2CPU_CTL, f2c_control);
+
+    //Step6: wait F2C_EN = 0
+    retry = 0;
+    while (1) {
+	nvt_set_page(FFM2CPU_CTL);
+	buf[0] = FFM2CPU_CTL & 0x7F;
+	buf[1] = 0xFF;
+	buf[2] = 0xFF;
+	ret = CTP_SPI_READ(ts->client, buf,  3);
+	if (ret) {
+		NVT_ERR("Read FFM2CPU control failed!\n");
+		return ret;
+	}
+
+	if ((buf[1] & 0x01) == 0x00)
+		break;
+
+	usleep_range(1000, 1000);
+	retry++;
+
+	if (unlikely(retry > 40)) {
+		NVT_ERR("Wait F2C_EN = 0 failed! retry = %d\n", retry);
+		return -EIO;
+	}
+    }
+
+    //Step7: Check REG TH_CPU_CHK  status (1: Success,  0: Fail), if 0, can Retry Step5.
+    if (((buf[2] & 0x04) >> 2) != 0x01) {
+	f2c_retry++;
+	if (f2c_retry <= retry_max) {
+		goto nvt_f2c_retry;
+	} else {
+		NVT_ERR("check TH_CPU_CHK failed!, buf[1]=0x%02X, buf[2]=0x%02X, f2c_retry = %d\n",
+					buf[1], buf[2], f2c_retry);
+		return -EIO;
+	}
+    }
+
+    if (F2C_RW == F2C_RW_READ) {
+	nvt_set_page(TOUCH_DATA_ADDR);
+	buf[0] = TOUCH_DATA_ADDR & 0x7F;
+	buf[1] = 0xFF;
+	ret = CTP_SPI_READ(ts->client, buf,  1 + len);//1 is AddrL
+	if (ret) {
+		NVT_ERR("Read data failed!\n");
+		return ret;
+	}
+	*data = buf[1];
+    }
+
+    return ret;
+}
+
+static int32_t nvt_f2c_disp_off(void)
+{
+    uint8_t data = 0x00;
+
+    return nvt_f2c_read_write(F2C_RW_WRITE, DISP_OFF_ADDR, 1, &data);
+}
+#endif /* NVT_TOUCH_ESD_DISP_RECOVERY */
+
+/*******************************************************
+Description:
 	Novatek touchscreen Download_Firmware with HW CRC
 function. It's complete download firmware flow.
 
@@ -790,6 +1001,13 @@ fail:
 		retry++;
 		if (unlikely(retry > 2)) {
 			NVT_ERR("error, retry=%d\n", retry);
+			nvt_read_bld_hw_crc();
+#if NVT_TOUCH_ESD_DISP_RECOVERY
+			if (nvt_check_crc_done_ilm_err()) {
+				NVT_ERR("set display off to trigger display esd recovery.\n");
+				nvt_f2c_disp_off();
+			}
+#endif /* #if NVT_TOUCH_ESD_DISP_RECOVERY */
 			break;
 		}
 	}

@@ -219,7 +219,15 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 {
 	int rc = 0;
 	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
-	int event = DRM_BLANK_UNBLANK;
+	struct drm_device *dev = bridge->dev;
+	int event = 0;
+
+	if (dev->doze_state == DRM_BLANK_POWERDOWN) {
+		dev->doze_state = DRM_BLANK_UNBLANK;
+		pr_err("%s power on from power off\n", __func__);
+	}
+
+	event = dev->doze_state;
 	g_notify_data.data = &event;
 
 	if (!bridge) {
@@ -437,7 +445,14 @@ static void dsi_bridge_post_disable(struct drm_bridge *bridge)
 {
 	int rc = 0;
 	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
-	int event = DRM_BLANK_POWERDOWN;
+	struct drm_device *dev = bridge->dev;
+	int event = 0;
+	if (dev->doze_state == DRM_BLANK_UNBLANK) {
+		dev->doze_state = DRM_BLANK_POWERDOWN;
+		pr_err("%s wrong doze state\n", __func__);
+	}
+
+	event = dev->doze_state;
 	g_notify_data.data = &event;
 
 	if (!bridge) {
