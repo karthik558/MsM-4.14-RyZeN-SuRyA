@@ -2120,6 +2120,7 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 				union power_supply_propval *val)
 {
 	union power_supply_propval pval = {0, };
+	union power_supply_propval batt_capa ={0,};
 	bool usb_online, dc_online;
 	u8 stat;
 	int rc, suspend = 0;
@@ -2172,6 +2173,11 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	}
 	dc_online = (bool)pval.intval;
 
+	rc = smblib_get_prop_from_bms(chg,
+			POWER_SUPPLY_PROP_CAPACITY, &batt_capa);
+	if (rc < 0)
+		smblib_err(chg, "Couldn't read SOC value, rc=%d\n", rc);
+
 	rc = smblib_read(chg, BATTERY_CHARGER_STATUS_1_REG, &stat);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't read BATTERY_CHARGER_STATUS_1 rc=%d\n",
@@ -2202,7 +2208,13 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 		break;
 	case TERMINATE_CHARGE:
 	case INHIBIT_CHARGE:
-		val->intval = POWER_SUPPLY_STATUS_FULL;
+		if ((batt_capa.intval <= 99) && usb_online)
+			val->intval = POWER_SUPPLY_STATUS_CHARGING;
+		else
+			val->intval = POWER_SUPPLY_STATUS_FULL;
+
+		smblib_dbg(chg, PR_OEM, "stat=%d capacity=%d usb_online=%d BATTERY_PROP_STATUS=%d\n",
+				stat, batt_capa.intval, usb_online, val->intval);
 		break;
 	case DISABLE_CHARGE:
 	case PAUSE_CHARGE:
