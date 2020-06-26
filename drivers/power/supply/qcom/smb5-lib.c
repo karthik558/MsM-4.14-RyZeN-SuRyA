@@ -2639,14 +2639,13 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 		lct_therm_lvl_reserved.intval = val->intval;
 	}
 
-	/*backlight off and not-incall, force minimum level 3*/
-	if ((lct_backlight_off) && (LctIsInCall == 0) && (val->intval > 3)) {
+	/*backlight off and not-incall*/
+	if ((lct_backlight_off) && (LctIsInCall == 0) && (val->intval > LCT_THERM_LCDOFF_LEVEL)) {
 		pr_info("leve ignored:backlight_off:%d level:%d",lct_backlight_off,val->intval);
 		return 0;
 	}
 
-	/*incall,force level 5*/
-	if ((LctIsInCall == 1) && (val->intval != 6)) {
+	if ((LctIsInCall == 1) && (val->intval != LCT_THERM_CALL_LEVEL)) {
 		pr_info("leve ignored:LctIsInCall:%d level:%d",LctIsInCall,val->intval);
 		return 0;
 	}
@@ -2670,6 +2669,7 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 			chg->thermal_mitigation[chg->system_temp_level]);
 	return 0;
 }
+
 #define PERIPHERAL_MASK		0xFF
 static u16 peripheral_base;
 static char log[256] = "";

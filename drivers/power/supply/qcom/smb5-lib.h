@@ -118,6 +118,10 @@ enum print_reason {
 #define TYPE_RECHECK_TIME_5S	5000
 #define TYPE_RECHECK_COUNT	3
 
+/* lct thermal */
+#define LCT_THERM_CALL_LEVEL		14
+#define LCT_THERM_LCDOFF_LEVEL		11
+
 enum hvdcp3_type {
 	HVDCP3_NONE = 0,
 	HVDCP3_CLASSA_18W,

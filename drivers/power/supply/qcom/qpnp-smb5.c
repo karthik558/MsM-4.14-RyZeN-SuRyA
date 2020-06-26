@@ -39,12 +39,8 @@
 #include <linux/fb.h>
 union power_supply_propval lct_therm_lvl_reserved;
 union power_supply_propval lct_therm_level;
-
-union power_supply_propval lct_therm_call_level = {6,};
-
-
-union power_supply_propval lct_therm_globe_level = {3,};
-union power_supply_propval lct_therm_india_level = {1,};
+union power_supply_propval lct_therm_call_level = {LCT_THERM_CALL_LEVEL,};
+union power_supply_propval lct_therm_lcdoff_level = {LCT_THERM_LCDOFF_LEVEL,};
 
 
 bool lct_backlight_off;
@@ -3769,18 +3765,18 @@ static void thermal_fb_notifier_resume_work(struct work_struct *work)
 	struct smb_charger *chg = container_of(work, struct smb_charger, fb_notify_work);
 	LctThermal = 1;
 
-		if ((lct_backlight_off) && (LctIsInCall == 0) )
-		{
-			if (lct_therm_lvl_reserved.intval >= 2)
-				smblib_set_prop_system_temp_level(chg,&lct_therm_globe_level);//level 2 2.2A
+	if ((lct_backlight_off) && (LctIsInCall == 0)) {
+		if (lct_therm_lvl_reserved.intval > LCT_THERM_LCDOFF_LEVEL)
+			smblib_set_prop_system_temp_level(chg,&lct_therm_lcdoff_level);
 		else
 			smblib_set_prop_system_temp_level(chg,&lct_therm_lvl_reserved);//from thermal-level
-		}
-		else if (LctIsInCall == 1)
-			smblib_set_prop_system_temp_level(chg,&lct_therm_call_level);//level 5 800ma
-		else
-			smblib_set_prop_system_temp_level(chg,&lct_therm_lvl_reserved);//from thermal-levle
-		LctThermal = 0;
+	} else if (LctIsInCall == 1) {
+		smblib_set_prop_system_temp_level(chg,&lct_therm_call_level);//800mA
+	} else {
+		smblib_set_prop_system_temp_level(chg,&lct_therm_lvl_reserved);//from thermal-levle
+	}
+
+	LctThermal = 0;
 }
 
 /* frame buffer notifier block control the suspend/resume procedure */
