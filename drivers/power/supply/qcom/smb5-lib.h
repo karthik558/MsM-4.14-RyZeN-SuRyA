@@ -673,6 +673,7 @@ struct smb_charger {
 	bool			apsd_ext_timeout;
 	bool			qc3p5_detected;
 
+	bool                    esr_reduce_fcc;
 	/* fast full charge related */
 	int 		chg_term_current_thresh_hi_from_dts;
 	bool			support_ffc;

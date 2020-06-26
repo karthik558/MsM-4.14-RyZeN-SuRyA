@@ -5960,6 +5960,7 @@ static void reduce_fcc_work(struct work_struct *work)
 		if (chg->esr_work_status == ESR_CHECK_FCC_NOLIMIT) {
 			effective_fcc -= REDUCED_CURRENT;
 			chg->esr_work_status = ESR_CHECK_FCC_LIMITED;
+			chg->esr_reduce_fcc = true;
 			reduce_fcc = true;
 			esr_work_time = ESR_WORK_TIME_2S;
 		} else {
@@ -5975,6 +5976,10 @@ static void reduce_fcc_work(struct work_struct *work)
 	}
 
 	vote(chg->fcc_votable, ESR_WORK_VOTER, reduce_fcc, effective_fcc);
+	if (reduce_fcc == false) {
+		msleep(500);
+		chg->esr_reduce_fcc = false;
+	}
 	schedule_delayed_work(&chg->reduce_fcc_work,
 				msecs_to_jiffies(esr_work_time));
 }
@@ -7172,6 +7177,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	chg->qc2_unsupported = false;
 	chg->recheck_charger = false;
 	chg->snk_debug_acc_detected = false;
+	chg->esr_reduce_fcc = false;
 	pr_err("%s:", __func__);
 	if (chg->pd_verifed)
 		chg->pd_verifed = false;
@@ -7897,8 +7903,9 @@ static void smblib_dynamic_adjust_fcc(struct smb_charger *chg, bool enable)
 			(current_fcc - DYN_ADJ_FCC_OFFSET_UA));
 	else if ((batt_current_now < (current_step - DYN_ADJ_FCC_OFFSET_UA))
 		&& (enable == true)
-		&& (strcmp(get_effective_client(chg->fcc_votable),
-			 ESR_WORK_VOTER) != 0))
+		&& (chg->esr_reduce_fcc == false))
+		//&& (strcmp(get_effective_client(chg->fcc_votable),
+		//	 ESR_WORK_VOTER) != 0))
 		vote(chg->fcc_votable, DYN_ADJ_FCC_VOTER, true,
 			(current_fcc + DYN_ADJ_FCC_OFFSET_UA));
 
@@ -7920,7 +7927,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 
 	rc = smblib_is_input_present(chg, &input_present);
 
-	pr_err("input_present: %d\n", input_present);
+	pr_err("input_present: %d, esr_reduce_fcc=%d\n", input_present, chg->esr_reduce_fcc);
 	if (rc < 0)
 		return;
 
@@ -7987,6 +7994,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 				true, chg->six_pin_step_cfg[chg->index_vfloat].fcc_step_ua);
 		chg->init_start_vbat_checked = true;
 		add_fcc = true;
+		chg->esr_reduce_fcc = false;
 	}
 
 	/* When the battery current is greater than 6A,
