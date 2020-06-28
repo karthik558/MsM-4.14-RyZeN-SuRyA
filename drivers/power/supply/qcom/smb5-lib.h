@@ -122,6 +122,10 @@ enum print_reason {
 #define LCT_THERM_CALL_LEVEL		14
 #define LCT_THERM_LCDOFF_LEVEL		11
 
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+	#define CHARGER_SOC_DECIMAL_MS		200
+#endif
+
 enum hvdcp3_type {
 	HVDCP3_NONE = 0,
 	HVDCP3_CLASSA_18W,
@@ -569,6 +573,9 @@ struct smb_charger {
 	struct delayed_work	reg_work;
 	struct delayed_work	pr_lock_clear_work;
 	struct delayed_work	reduce_fcc_work;
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+	struct delayed_work     charger_soc_decimal;
+#endif
 
 	struct alarm		lpd_recheck_timer;
 	struct alarm		moisture_protection_alarm;

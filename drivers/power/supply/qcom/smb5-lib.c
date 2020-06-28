@@ -5983,6 +5983,16 @@ static void reduce_fcc_work(struct work_struct *work)
 	schedule_delayed_work(&chg->reduce_fcc_work,
 				msecs_to_jiffies(esr_work_time));
 }
+
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+static void smblib_charger_soc_decimal(struct work_struct *work)
+{
+	struct smb_charger *chg = container_of(work, struct smb_charger,
+			charger_soc_decimal.work);
+	power_supply_changed(chg->bms_psy);
+}
+#endif
+
 static void smblib_micro_usb_plugin(struct smb_charger *chg, bool vbus_rising)
 {
 	if (!vbus_rising) {
@@ -9297,6 +9307,9 @@ int smblib_init(struct smb_charger *chg)
 	}
 	INIT_DELAYED_WORK(&chg->pr_lock_clear_work,
 					smblib_pr_lock_clear_work);
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+	INIT_DELAYED_WORK(&chg->charger_soc_decimal, smblib_charger_soc_decimal);
+#endif
 	setup_timer(&chg->apsd_timer, apsd_timer_cb, (unsigned long)chg);
 
 	if (chg->wa_flags & CHG_TERMINATION_WA) {
@@ -9460,6 +9473,9 @@ int smblib_deinit(struct smb_charger *chg)
 		cancel_delayed_work_sync(&chg->six_pin_batt_step_chg_work);
 		cancel_delayed_work_sync(&chg->pr_swap_detach_work);
 		cancel_delayed_work_sync(&chg->reg_work);
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+		cancel_delayed_work_sync(&chg->charger_soc_decimal);
+#endif
 		power_supply_unreg_notifier(&chg->nb);
 		smblib_destroy_votables(chg);
 		qcom_step_chg_deinit();
