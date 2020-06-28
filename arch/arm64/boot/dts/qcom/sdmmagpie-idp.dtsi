@@ -404,7 +404,7 @@
 	qcom,cl-feedback-on;
 	qcom,tcss-enable;
 	qcom,vbatt-cutoff-mv = <3400>;
-	qcom,vbatt-low-mv = <3300>;
+	qcom,vbatt-low-mv = <3500>;
 	qcom,vbatt-low-cold-mv = <3700>;
 	qcom,vbatt-empty-mv = <3000>;
 	qcom,vbatt-empty-cold-mv = <3000>;
@@ -413,6 +413,7 @@
 	qcom,s3-entry-fifo-length = <2>;
 	qcom,qg-vadc = <&pm6150_vadc>;
 	qcom,qg-ext-sns;
+	mi,software-optimize-ffc-qg-iterm;
 };
 
 &pm6150_charger {
@@ -432,7 +433,7 @@
 			   "vph_voltage";
 	qcom,battery-data = <&mtp_batterydata>;
 	qcom,usb-icl-ua = <3000000>;
-	qcom,auto-recharge-soc = <98>;
+	qcom,auto-recharge-soc = <99>;
 	qcom,fcc-max-ua = <6000000>;
 	qcom,fv-max-uv = <4480000>;
 	qcom,chg-term-src = <1>;

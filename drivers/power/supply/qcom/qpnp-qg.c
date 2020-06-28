@@ -1674,8 +1674,14 @@ static const char *qg_get_battery_type(struct qpnp_qg *chip)
 #define BATT_MISSING_SOC	50
 #define EMPTY_SOC		0
 #define FULL_SOC		100
+static int qg_get_ffc_iterm_for_qg(struct qpnp_qg *chip);
 static int qg_get_battery_capacity(struct qpnp_qg *chip, int *soc)
 {
+	static int pre_soc;
+	int rc, ibat, ffc_100_ibat;
+	union power_supply_propval prop = {0, };
+	static int ibat_count;
+
 	if (is_debug_batt_id(chip)) {
 		*soc = DEBUG_BATT_SOC;
 		return 0;
@@ -1698,6 +1704,49 @@ static int qg_get_battery_capacity(struct qpnp_qg *chip, int *soc)
 	else
 		*soc = chip->msoc;
 
+	if(chip->charge_status == POWER_SUPPLY_STATUS_CHARGING){
+	        rc = qg_get_battery_current(chip, &ibat);
+                if ((rc >= 0) && (ibat < 0) && (*soc < pre_soc)) {
+			*soc = pre_soc;
+			pr_err ("lct rc=%d,ibat=%d,pre_soc=%d,*soc=%d\n", rc,ibat,pre_soc,*soc);
+		}
+	}
+
+	if (chip->dt.software_optimize_ffc_qg_iterm) {
+		if ((chip->fastcharge_mode_enabled) && (pre_soc == 99)
+			&& (*soc == 100) && (chip->charge_status == POWER_SUPPLY_STATUS_CHARGING)) {
+			rc = qg_get_battery_current(chip, &ibat);
+			ffc_100_ibat = qg_get_ffc_iterm_for_qg(chip);
+			if ((rc >= 0) && (-ibat > ffc_100_ibat)) {
+				*soc = pre_soc;
+				ibat_count = 0;
+				qg_dbg(chip, QG_DEBUG_STATUS,
+						"ibat[%d] not smaller than 100 persent ffc current[%d] setting\n",
+						-ibat, ffc_100_ibat);
+			} else if ((rc >= 0) && (-ibat <= ffc_100_ibat)) {
+				ibat_count++;
+				pr_info("ibat is smaller than ffc_100_ibat,ibat_count=%d\n", ibat_count);
+				if (ibat_count >= 3) {
+					if (is_batt_available(chip))
+						rc = power_supply_get_property(chip->batt_psy,
+							POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED, &prop);
+					if (prop.intval)
+					{
+						*soc = 100;
+						pre_soc = 100;
+					} else {
+						*soc = pre_soc;
+						qg_dbg(chip, QG_DEBUG_STATUS,
+								"BQ charging,not update 100%!\n");
+					}
+					ibat_count = 0;
+				}
+			}
+		} else {
+			pre_soc = *soc;
+			ibat_count = 0;
+		}
+	}
 	mutex_unlock(&chip->soc_lock);
 
 	return 0;
@@ -4445,6 +4494,7 @@ static int qg_parse_dt(struct qpnp_qg *chip)
 
 	chip->dt.qg_ext_sense = of_property_read_bool(node, "qcom,qg-ext-sns");
 
+	chip->dt.software_optimize_ffc_qg_iterm = of_property_read_bool(node, "mi,software-optimize-ffc-qg-iterm");
 	chip->dt.use_s7_ocv = of_property_read_bool(node, "qcom,qg-use-s7-ocv");
 
 	rc = of_property_read_u32(node, "qcom,min-sleep-time-secs", &temp);

@@ -2120,8 +2120,10 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 				union power_supply_propval *val)
 {
 	union power_supply_propval pval = {0, };
+	union power_supply_propval batt_capa ={0,};
 	bool usb_online, dc_online;
 	u8 stat;
+	int batt_health;
 	int rc, suspend = 0;
 
 	if (chg->use_bq_pump && !chg->six_pin_step_charge_enable
@@ -2172,6 +2174,19 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	}
 	dc_online = (bool)pval.intval;
 
+	rc = smblib_get_prop_batt_health(chg, &pval);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't get batt health property rc=%d\n",
+			rc);
+		return rc;
+	}
+	batt_health = pval.intval;
+
+	rc = smblib_get_prop_from_bms(chg,
+			POWER_SUPPLY_PROP_CAPACITY, &batt_capa);
+	if (rc < 0)
+		smblib_err(chg, "Couldn't read SOC value, rc=%d\n", rc);
+
 	rc = smblib_read(chg, BATTERY_CHARGER_STATUS_1_REG, &stat);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't read BATTERY_CHARGER_STATUS_1 rc=%d\n",
@@ -2202,7 +2217,13 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 		break;
 	case TERMINATE_CHARGE:
 	case INHIBIT_CHARGE:
-		val->intval = POWER_SUPPLY_STATUS_FULL;
+		if ((batt_capa.intval <= 99) && usb_online)
+			val->intval = POWER_SUPPLY_STATUS_CHARGING;
+		else
+			val->intval = POWER_SUPPLY_STATUS_FULL;
+
+		smblib_dbg(chg, PR_OEM, "stat=%d capacity=%d usb_online=%d BATTERY_PROP_STATUS=%d\n",
+				stat, batt_capa.intval, usb_online, val->intval);
 		break;
 	case DISABLE_CHARGE:
 	case PAUSE_CHARGE:
@@ -2225,6 +2246,12 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	if (is_client_vote_enabled_locked(chg->usb_icl_votable,
 						CHG_TERMINATION_VOTER)) {
 		val->intval = POWER_SUPPLY_STATUS_FULL;
+		return 0;
+	}
+
+	if((POWER_SUPPLY_HEALTH_COOL == batt_health || POWER_SUPPLY_HEALTH_WARM == batt_health || POWER_SUPPLY_HEALTH_OVERHEAT == batt_health || POWER_SUPPLY_HEALTH_OVERVOLTAGE == batt_health)
+		&& val->intval == POWER_SUPPLY_STATUS_FULL){
+		val->intval = POWER_SUPPLY_STATUS_CHARGING;
 		return 0;
 	}
 
@@ -2327,7 +2354,7 @@ int smblib_get_prop_batt_health(struct smb_charger *chg,
                                            "do not  set step charge work\n", pval.intval);
                                 effective_fv_uv = 4480000;
                         }else{
-                                effective_fv_uv = get_effective_result(chg->fv_votable);
+                                effective_fv_uv = get_effective_result_locked(chg->fv_votable);
                         }
 			if (pval.intval >= effective_fv_uv + 100000) { //4000
 				val->intval = POWER_SUPPLY_HEALTH_OVERVOLTAGE;
@@ -2612,14 +2639,13 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 		lct_therm_lvl_reserved.intval = val->intval;
 	}
 
-	/*backlight off and not-incall, force minimum level 3*/
-	if ((lct_backlight_off) && (LctIsInCall == 0) && (val->intval > 3)) {
+	/*backlight off and not-incall*/
+	if ((lct_backlight_off) && (LctIsInCall == 0) && (val->intval > LCT_THERM_LCDOFF_LEVEL)) {
 		pr_info("leve ignored:backlight_off:%d level:%d",lct_backlight_off,val->intval);
 		return 0;
 	}
 
-	/*incall,force level 5*/
-	if ((LctIsInCall == 1) && (val->intval != 6)) {
+	if ((LctIsInCall == 1) && (val->intval != LCT_THERM_CALL_LEVEL)) {
 		pr_info("leve ignored:LctIsInCall:%d level:%d",LctIsInCall,val->intval);
 		return 0;
 	}
@@ -2643,6 +2669,7 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 			chg->thermal_mitigation[chg->system_temp_level]);
 	return 0;
 }
+
 #define PERIPHERAL_MASK		0xFF
 static u16 peripheral_base;
 static char log[256] = "";
@@ -5933,6 +5960,7 @@ static void reduce_fcc_work(struct work_struct *work)
 		if (chg->esr_work_status == ESR_CHECK_FCC_NOLIMIT) {
 			effective_fcc -= REDUCED_CURRENT;
 			chg->esr_work_status = ESR_CHECK_FCC_LIMITED;
+			chg->esr_reduce_fcc = true;
 			reduce_fcc = true;
 			esr_work_time = ESR_WORK_TIME_2S;
 		} else {
@@ -5948,6 +5976,10 @@ static void reduce_fcc_work(struct work_struct *work)
 	}
 
 	vote(chg->fcc_votable, ESR_WORK_VOTER, reduce_fcc, effective_fcc);
+	if (reduce_fcc == false) {
+		msleep(500);
+		chg->esr_reduce_fcc = false;
+	}
 	schedule_delayed_work(&chg->reduce_fcc_work,
 				msecs_to_jiffies(esr_work_time));
 }
@@ -7145,6 +7177,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	chg->qc2_unsupported = false;
 	chg->recheck_charger = false;
 	chg->snk_debug_acc_detected = false;
+	chg->esr_reduce_fcc = false;
 	pr_err("%s:", __func__);
 	if (chg->pd_verifed)
 		chg->pd_verifed = false;
@@ -7870,8 +7903,9 @@ static void smblib_dynamic_adjust_fcc(struct smb_charger *chg, bool enable)
 			(current_fcc - DYN_ADJ_FCC_OFFSET_UA));
 	else if ((batt_current_now < (current_step - DYN_ADJ_FCC_OFFSET_UA))
 		&& (enable == true)
-		&& (strcmp(get_effective_client(chg->fcc_votable),
-			 ESR_WORK_VOTER) != 0))
+		&& (chg->esr_reduce_fcc == false))
+		//&& (strcmp(get_effective_client(chg->fcc_votable),
+		//	 ESR_WORK_VOTER) != 0))
 		vote(chg->fcc_votable, DYN_ADJ_FCC_VOTER, true,
 			(current_fcc + DYN_ADJ_FCC_OFFSET_UA));
 
@@ -7893,7 +7927,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 
 	rc = smblib_is_input_present(chg, &input_present);
 
-	pr_err("input_present: %d\n", input_present);
+	pr_err("input_present: %d, esr_reduce_fcc=%d\n", input_present, chg->esr_reduce_fcc);
 	if (rc < 0)
 		return;
 
@@ -7960,6 +7994,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 				true, chg->six_pin_step_cfg[chg->index_vfloat].fcc_step_ua);
 		chg->init_start_vbat_checked = true;
 		add_fcc = true;
+		chg->esr_reduce_fcc = false;
 	}
 
 	/* When the battery current is greater than 6A,

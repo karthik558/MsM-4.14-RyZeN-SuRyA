@@ -986,12 +986,16 @@ static int aw8624_lra_resistance_detector(struct aw8624 *aw8624)
 static int aw8624_haptic_ram_vbat_comp(struct aw8624 *aw8624, bool flag)
 {
 	int temp_gain = 0;
-
+        //pr_info("%s enter, flag = %d,aw8624->ram_vbat_comp=%d\n", __func__, flag, aw8624->ram_vbat_comp);
 	if (flag) {
 		if (aw8624->ram_vbat_comp == AW8624_HAPTIC_RAM_VBAT_COMP_ENABLE) {
 			aw8624_haptic_get_vbat(aw8624);
 			temp_gain =
 			    aw8624->gain * AW8624_VBAT_REFER / aw8624->vbat;
+			//Daniel 20200624 modify start
+			pr_info("%s base_gain=%d, cal_gain=%d, adc_vat=%d\n",
+					__func__, aw8624->gain, temp_gain, aw8624->vbat);
+			//Daniel 20200624 modify end
 			if (temp_gain >
 			    (128 * AW8624_VBAT_REFER / AW8624_VBAT_MIN)) {
 				temp_gain =
@@ -2106,7 +2110,7 @@ static int aw8624_haptic_init(struct aw8624 *aw8624)
 	/* vbat compensation */
 	aw8624_haptic_cont_vbat_mode(aw8624,
 				     AW8624_HAPTIC_CONT_VBAT_HW_COMP_MODE);
-	//aw8624->ram_vbat_comp = AW8624_HAPTIC_RAM_VBAT_COMP_ENABLE;
+	aw8624->ram_vbat_comp = AW8624_HAPTIC_RAM_VBAT_COMP_ENABLE;
 	mutex_unlock(&aw8624->lock);
 
 	/* f0 calibration */
@@ -2215,6 +2219,8 @@ static void aw8624_vibrator_work_routine(struct work_struct *work)
 			aw8624_haptic_play_effect_seq(aw8624, true);
 		} else if (aw8624->activate_mode ==
 			   AW8624_HAPTIC_ACTIVATE_RAM_LOOP_MODE) {
+                        //pr_info("%s activate_mode=%d\n", __func__, aw8624->activate_mode);
+			aw8624->gain = 0x80;//Daniel 20200624 modify
 			aw8624_haptic_ram_vbat_comp(aw8624, true);
 			aw8624_haptic_play_effect_seq(aw8624, true);
 			hrtimer_start(&aw8624->timer,
