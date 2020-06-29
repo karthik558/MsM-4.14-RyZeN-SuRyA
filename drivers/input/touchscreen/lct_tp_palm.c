@@ -186,8 +186,8 @@ static ssize_t lct_proc_tp_palm_write(struct file *file,
 		return -EINVAL;
 
 	if (input > 0) {
-		if (lct_tp_p->enable_tp_palm_flag)
-			goto exit;
+		//if (lct_tp_p->enable_tp_palm_flag)
+		//	goto exit;
 		TP_LOGW("Enbale Touchpad Palm...\n");
 		ret = lct_tp_p->pfun(false);
 		if (ret) {
@@ -196,8 +196,8 @@ static ssize_t lct_proc_tp_palm_write(struct file *file,
 		}
 		lct_tp_p->enable_tp_palm_flag = true;
 	} else {
-		if (!lct_tp_p->enable_tp_palm_flag)
-			goto exit;
+		//if (!lct_tp_p->enable_tp_palm_flag)
+		//	goto exit;
 		TP_LOGW("Disable Touchpad Palm...\n");
 		ret = lct_tp_p->pfun(true);
 		if (ret) {
