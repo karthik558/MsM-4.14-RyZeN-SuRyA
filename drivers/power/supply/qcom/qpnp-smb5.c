@@ -461,6 +461,7 @@ static int smb5_charge_step_charge_init(struct smb_charger *chg,
 	return rc;
 }
 
+#define MICRO_P5A				500000
 #define MICRO_1P5A				1500000
 #define MICRO_P1A				100000
 #define MICRO_1PA				1000000
@@ -1110,6 +1111,10 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 		if (chg->support_ffc) {
 			rc = smblib_set_fastcharge_mode(chg, val->intval);
 			power_supply_changed(chg->bms_psy);
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+			schedule_delayed_work(&chg->charger_soc_decimal,
+					msecs_to_jiffies(CHARGER_SOC_DECIMAL_MS));
+#endif
 		}
 		break;
 	case POWER_SUPPLY_PROP_PD_IN_HARD_RESET:
@@ -1934,9 +1939,6 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 	return 0;
 }
 
-#ifdef CONFIG_REVERSE_CHARGE
-extern void rerun_reverse_check(struct smb_charger *chg);
-#endif
 
 static int smb5_batt_set_prop(struct power_supply *psy,
 		enum power_supply_property prop,
@@ -3824,6 +3826,127 @@ static int lct_unregister_powermanger(struct smb_charger *chg)
 }
 
 
+#ifdef CONFIG_REVERSE_CHARGE
+#define  BATT_10_BELOW_ZERO_THRESHOLD    (310)
+#define  BATT_15_THRESHOLD    340
+#define  BATT_50_THRESHOLD    370
+#define  BATT_TEMP_HYSTERESIS     10
+#define  OTG_STEP_HYSTERISIS_DELAY_US		5000000 /* 5 secs */
+#define  OTG_WAKELOCK_HOLD_TIME 2000 /* in ms */
+
+static int lct_get_otg_chg_current(int temp)
+{
+	int otg_chg_current_temp = 0;
+	if((temp >= BATT_15_THRESHOLD + BATT_TEMP_HYSTERESIS) && (temp <= BATT_50_THRESHOLD - BATT_TEMP_HYSTERESIS)){
+		otg_chg_current_temp = MICRO_2PA;
+	}else if((temp > BATT_50_THRESHOLD) ||
+	((temp >= BATT_10_BELOW_ZERO_THRESHOLD + BATT_TEMP_HYSTERESIS) && ( temp < BATT_15_THRESHOLD))){
+		otg_chg_current_temp = MICRO_1PA;
+	}else if(temp < BATT_10_BELOW_ZERO_THRESHOLD){
+		otg_chg_current_temp = MICRO_P5A;
+	}
+	return otg_chg_current_temp;
+}
+
+
+
+static void step_otg_chg_work(struct work_struct *work)
+{
+	struct smb_charger *chg = container_of(work,
+			struct smb_charger, otg_chg_notify_work);
+	int rc = 0;
+	int temp =0;
+	int otg_chg_current_temp = 0;
+	union power_supply_propval prop = {0, };
+
+
+	rc = smblib_get_prop_from_bms(chg,
+							POWER_SUPPLY_PROP_TEMP, &prop);
+
+	if (rc < 0) {
+		pr_err("Couldn't read temp rc=%d\n",rc);
+		goto exit_work;
+	}
+
+	temp = prop.intval;
+	pr_err("longcheer ,%s:temp=%d\n",__func__,temp);
+
+	otg_chg_current_temp = lct_get_otg_chg_current(temp);
+
+	if((otg_chg_current_temp == 0) || (chg->otg_chg_current == otg_chg_current_temp))
+		goto exit_work;
+	else
+		chg->otg_chg_current = otg_chg_current_temp;
+	pr_err("longcheer ,%s:otg_chg_current=%d\n",__func__,chg->otg_chg_current);
+
+	rerun_reverse_check(chg);
+	//rc = smblib_set_charge_param(chg, &chg->param.otg_cl, chg->otg_chg_current);
+	//if (rc < 0) {
+	//	pr_err("Couldn't set otg current limit rc=%d\n", rc);
+	//}
+
+exit_work:
+	return;
+}
+
+
+static int step_otg_chg_notifier_call(struct notifier_block *nb,
+			       unsigned long event, void *data)
+{
+	struct smb_charger *chg = container_of(nb, struct smb_charger, otg_step_nb);
+	struct power_supply *psy = data;
+
+	if (event != PSY_EVENT_PROP_CHANGED)
+		return NOTIFY_OK;
+	pr_err("longcheer ,%s:reverse_charge_state=%d\n",__func__,chg->reverse_charge_state);
+	if(!chg->reverse_charge_state)
+		return NOTIFY_OK;
+
+	if ((strcmp(psy->desc->name, "battery") == 0)
+			|| (strcmp(psy->desc->name, "usb") == 0)) {
+		//__pm_stay_awake(chg->step_otg_chg_ws);
+		__pm_wakeup_event(&chg->step_otg_chg_ws, OTG_WAKELOCK_HOLD_TIME);
+		schedule_work(&chg->otg_chg_notify_work);
+	}
+
+	return NOTIFY_OK;
+}
+
+
+static int step_otg_chg_register_notifier(struct smb_charger *chg)
+{
+	int rc;
+
+	chg->otg_step_nb.notifier_call = step_otg_chg_notifier_call;
+	rc = power_supply_reg_notifier(&chg->otg_step_nb);
+	if (rc < 0) {
+		pr_err("Couldn't register psy notifier rc = %d\n", rc);
+		return rc;
+	}
+
+	return 0;
+}
+
+
+static int init_otg_step_chg(struct smb_charger *chg)
+{
+	int rc = 0;
+	//chg->step_otg_chg_ws = wakeup_source_register("lct-step-otg-chg");
+	//if (!chg->step_otg_chg_ws)
+	//	return -EINVAL;
+	wakeup_source_init(&chg->step_otg_chg_ws, "lct-step-otg-chg");
+	rc = step_otg_chg_register_notifier(chg);
+	if (rc < 0) {
+		pr_err("Couldn't register psy notifier rc = %d\n", rc);
+		//goto release_wakeup_source;
+	}
+	
+//release_wakeup_source:
+	//wakeup_source_unregister(chg->step_otg_chg_ws);
+	return rc;
+}
+#endif
+
 
 static int smb5_show_charger_status(struct smb5 *chip)
 {
@@ -3900,6 +4023,7 @@ static int smb5_probe(struct platform_device *pdev)
 #ifdef CONFIG_REVERSE_CHARGE
 	chg->reverse_charge_mode = false;
 	chg->reverse_charge_state = false;
+	chg->otg_chg_current = MICRO_2PA;
 #endif
 
 	chg->regmap = dev_get_regmap(chg->dev->parent, NULL);
@@ -4096,12 +4220,22 @@ static int smb5_probe(struct platform_device *pdev)
 		goto free_irq;
 	}
 
+	#ifdef CONFIG_REVERSE_CHARGE
+	rc = init_otg_step_chg(chg);
+	if (rc < 0) {
+		pr_err("Failed to init otg step chg, rc=%d\n", rc);
+	}
+	#endif
+
 	device_init_wakeup(chg->dev, true);
 	schedule_delayed_work(&chg->reg_work, 30 * HZ);
 	lct_therm_lvl_reserved.intval= 0;
 	lct_therm_level.intval= 0;
 	lct_backlight_off = false;
 	INIT_WORK(&chg->fb_notify_work, thermal_fb_notifier_resume_work);
+	#ifdef CONFIG_REVERSE_CHARGE
+	INIT_WORK(&chg->otg_chg_notify_work, step_otg_chg_work);
+	#endif
 	/* register suspend and resume fucntion*/
 	lct_register_powermanger(chg);
 
@@ -4133,6 +4267,11 @@ static int smb5_remove(struct platform_device *pdev)
 							&attrs2[attr_count2].attr);
 			}
 	lct_unregister_powermanger(chg);
+	#ifdef CONFIG_REVERSE_CHARGE
+	power_supply_unreg_notifier(&chg->otg_step_nb);
+	//wakeup_source_unregister(chg->step_otg_chg_ws);
+	wakeup_source_trash(&chg->step_otg_chg_ws);
+	#endif
 
 	/* force enable APSD */
 	smblib_masked_write(chg, USBIN_OPTIONS_1_CFG_REG,

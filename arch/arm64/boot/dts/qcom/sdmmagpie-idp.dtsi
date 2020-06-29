@@ -414,6 +414,20 @@
 	qcom,qg-vadc = <&pm6150_vadc>;
 	qcom,qg-ext-sns;
 	mi,software-optimize-ffc-qg-iterm;
+	qcom,soc_decimal_rate = <
+		0  32
+		10 30
+		20 28
+		30 28
+		40 28
+		50 28
+		60 28
+		70 28
+		80 28
+		90 26
+		95 10
+		99 5>;
+	qcom,qg-fast-chg-config;
 };
 
 &pm6150_charger {

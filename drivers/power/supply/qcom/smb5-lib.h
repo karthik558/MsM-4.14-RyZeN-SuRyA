@@ -122,6 +122,10 @@ enum print_reason {
 #define LCT_THERM_CALL_LEVEL		14
 #define LCT_THERM_LCDOFF_LEVEL		11
 
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+	#define CHARGER_SOC_DECIMAL_MS		200
+#endif
+
 enum hvdcp3_type {
 	HVDCP3_NONE = 0,
 	HVDCP3_CLASSA_18W,
@@ -569,6 +573,9 @@ struct smb_charger {
 	struct delayed_work	reg_work;
 	struct delayed_work	pr_lock_clear_work;
 	struct delayed_work	reduce_fcc_work;
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+	struct delayed_work     charger_soc_decimal;
+#endif
 
 	struct alarm		lpd_recheck_timer;
 	struct alarm		moisture_protection_alarm;
@@ -755,6 +762,10 @@ struct smb_charger {
 	bool        reverse_charge_mode;
 	bool        reverse_charge_state;
 	unsigned int    switch_sel_gpio;
+	struct notifier_block	otg_step_nb;
+	struct work_struct otg_chg_notify_work;
+	struct wakeup_source	step_otg_chg_ws;
+	int otg_chg_current;
 #endif
 	bool   is_float_recheck;
 };
@@ -1000,4 +1011,7 @@ int smblib_get_prop_battery_charging_enabled(struct smb_charger *chg,
                 union power_supply_propval *val);
 int smblib_set_prop_battery_charging_enabled(struct smb_charger *chg,
                 const union power_supply_propval *val);
+#ifdef CONFIG_REVERSE_CHARGE
+void rerun_reverse_check(struct smb_charger *chg);
+#endif
 #endif /* __SMB5_CHARGER_H */
