@@ -5863,6 +5863,43 @@ irqreturn_t icl_change_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static void smblib_cc_un_compliant_charge_work(struct work_struct *work)
+{
+	union power_supply_propval val = {0, };
+	int rc, usb_present = 0;
+
+	struct smb_charger *chg = container_of(work, struct smb_charger,
+					cc_un_compliant_charge_work.work);
+
+	rc = smblib_get_prop_usb_present(chg, &val);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't get usb present rc = %d\n", rc);
+		return;
+	}
+
+	usb_present = val.intval;
+	/*
+	 * if CC pin of C to A cable is not connected to the receptacle
+	 * or CC pin is bad or short to VBUS or C to C cable CC line is float,
+	 * disable APSD CC trigger since pm8150b CC protection voltage
+	 * threshold is very high (22V), our wire charging maxium charging
+	 * vbus is below 13.2V.
+	 */
+	if (usb_present
+			&& (chg->typec_mode == POWER_SUPPLY_TYPEC_NONE ||
+				chg->typec_mode == POWER_SUPPLY_TYPEC_NON_COMPLIANT)
+			&& (chg->cc_un_compliant_detected == false)) {
+		vote( chg->usb_icl_votable, CC_UN_COMPLIANT_VOTER, true, 500000);
+		vote( chg->fcc_votable, CC_UN_COMPLIANT_VOTER, true, 500000);
+		pr_err("CC uncompliant, set icl = 500mA\n");
+		chg->cc_un_compliant_detected = true;
+		//smblib_apsd_enable(chg, true);
+		smblib_hvdcp_detect_enable(chg, true);
+		smblib_rerun_apsd_if_required(chg);
+	}
+}
+
+
 #define REDUCED_CURRENT		500000
 static int smblib_get_effective_fcc_val(struct smb_charger *chg)
 {
@@ -6002,6 +6039,7 @@ static void smblib_micro_usb_plugin(struct smb_charger *chg, bool vbus_rising)
 	}
 }
 
+static void typec_src_removal(struct smb_charger *chg);
 void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 {
 	int rc;
@@ -6042,6 +6080,12 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 		chg->hvdcp_recheck_status = false;
 		chg->recheck_charger = false;
 		chg->precheck_charger_type = POWER_SUPPLY_TYPE_UNKNOWN;
+		if (chg->cc_un_compliant_detected) {
+			/* disable apsd if cc_un_compliant detected after plug out */
+			//smblib_apsd_enable(chg, false);
+			typec_src_removal(chg);
+			chg->cc_un_compliant_detected = false;
+		}
 		/* Force 1500mA FCC on USB removal if fcc stepper is enabled */
 		if (chg->fcc_stepper_enable)
 			vote(chg->fcc_votable, FCC_STEPPER_VOTER,
@@ -6098,6 +6142,8 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 					msecs_to_jiffies(PL_DELAY_MS));
 		schedule_delayed_work(&chg->charger_type_recheck,
 					msecs_to_jiffies(CHARGER_RECHECK_DELAY_MS));
+		schedule_delayed_work(&chg->cc_un_compliant_charge_work,
+					msecs_to_jiffies(CC_UN_COMPLIANT_START_DELAY_MS));
 
 		if (chg->use_bq_pump)
 			schedule_delayed_work(&chg->reduce_fcc_work,
@@ -6163,6 +6209,13 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 		rc = smblib_request_dpdm(chg, false);
 		if (rc < 0)
 			smblib_err(chg, "Couldn't disable DPDM rc=%d\n", rc);
+
+		if (chg->cc_un_compliant_detected) {
+			/* disable apsd if cc_un_compliant detected after plug out */
+			//smblib_apsd_enable(chg, false);
+			typec_src_removal(chg);
+			chg->cc_un_compliant_detected = false;
+		}
 
 		chg->hvdcp_recheck_status = false;
 		chg->recheck_charger = false;
@@ -7078,6 +7131,9 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, QC_A_CP_ICL_MAX_VOTER, false, 0);
 	vote(chg->usb_icl_votable, PD_VERIFED_VOTER, false, 0);
 	vote(chg->usb_icl_votable, QC2_UNSUPPORTED_VOTER, false, 0);
+
+	vote(chg->usb_icl_votable, CC_UN_COMPLIANT_VOTER, false, 0);
+	vote(chg->fcc_votable, CC_UN_COMPLIANT_VOTER, false, 0);
 
 	/* Remove SW thermal regulation WA votes */
 	vote(chg->usb_icl_votable, SW_THERM_REGULATION_VOTER, false, 0);
@@ -9113,6 +9169,18 @@ static void smblib_charger_type_recheck(struct work_struct *work)
 		smblib_dbg(chg, PR_OEM, "hvdcp detect or check_count = %d break\n",
 				check_count);
 		check_count = 0;
+
+		/* TypeC mode change, remove CC uncompliant vote */
+		if ( chg->cc_un_compliant_detected == true
+			&& (chg->typec_mode != POWER_SUPPLY_TYPEC_NONE
+				&& chg->typec_mode != POWER_SUPPLY_TYPEC_NON_COMPLIANT)) {
+			vote(chg->usb_icl_votable, CC_UN_COMPLIANT_VOTER, false, 0);
+			vote(chg->fcc_votable, CC_UN_COMPLIANT_VOTER, false, 0);
+			pr_err("Recheck remove CC uncompliant vote\n");
+			chg->cc_un_compliant_detected = false;
+			smblib_hvdcp_detect_enable(chg, false);
+		}
+
 		return;
 	}
 
@@ -9326,6 +9394,7 @@ int smblib_init(struct smb_charger *chg)
 	INIT_DELAYED_WORK(&chg->lpd_detach_work, smblib_lpd_detach_work);
 	INIT_DELAYED_WORK(&chg->raise_qc3_vbus_work, smblib_raise_qc3_vbus_work);
 	INIT_DELAYED_WORK(&chg->charger_type_recheck, smblib_charger_type_recheck);
+	INIT_DELAYED_WORK(&chg->cc_un_compliant_charge_work,smblib_cc_un_compliant_charge_work);
 	INIT_DELAYED_WORK(&chg->thermal_regulation_work,
 					smblib_thermal_regulation_work);
 	INIT_DELAYED_WORK(&chg->usbov_dbc_work, smblib_usbov_dbc_work);
@@ -9501,6 +9570,7 @@ int smblib_deinit(struct smb_charger *chg)
 		cancel_delayed_work_sync(&chg->lpd_detach_work);
 		cancel_delayed_work_sync(&chg->raise_qc3_vbus_work);
 		cancel_delayed_work_sync(&chg->charger_type_recheck);
+		cancel_delayed_work_sync(&chg->cc_un_compliant_charge_work);
 		cancel_delayed_work_sync(&chg->thermal_regulation_work);
 		cancel_delayed_work_sync(&chg->usbov_dbc_work);
 		cancel_delayed_work_sync(&chg->role_reversal_check);
