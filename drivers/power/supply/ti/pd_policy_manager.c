@@ -37,6 +37,8 @@
 #define	BUS_OVP_THRESHOLD		12000
 #define	BUS_OVP_ALARM_THRESHOLD		9500
 
+#define BATT_WARM_CHG_VOLT		4100
+
 #define BUS_VOLT_INIT_UP		400
 
 #define BAT_VOLT_LOOP_LMT		BATT_MAX_CHG_VOLT
@@ -75,7 +77,7 @@ static struct pdpm_config pm_config = {
 static struct usbpd_pm *__pdpm;
 
 static int fc2_taper_timer;
-static int cool_overcharge_timer;
+static int cool_warm_overcharge_timer;
 static int ibus_lmt_change_timer;
 
 
@@ -202,6 +204,29 @@ static bool is_cool_charge(struct usbpd_pm *pdpm)
 
 	pr_debug("batt_temp: %d\n", batt_temp);
 	if (batt_temp < 150)
+		return true;
+	return false;
+}
+
+static bool is_warm_charge(struct usbpd_pm *pdpm)
+{
+	union power_supply_propval pval = {0,};
+	int batt_temp = 0;
+	int rc;
+
+	if (!pdpm->bms_psy)
+		return false;
+
+	rc = power_supply_get_property(pdpm->bms_psy,
+				POWER_SUPPLY_PROP_TEMP, &pval);
+	if (rc < 0) {
+		pr_info("Couldn't get batt temp prop:%d\n", rc);
+		return false;
+	}
+	batt_temp = pval.intval;
+
+	pr_debug("batt_temp: %d\n", batt_temp);
+	if (batt_temp > 480)
 		return true;
 	return false;
 }
@@ -733,16 +758,17 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 	}
 
 	/*check overcharge when it is cool*/
-	if (pdpm->cp.vbat_volt > pm_config.bat_volt_lp_lmt
-			&& is_cool_charge(pdpm)) {
-		if (cool_overcharge_timer++ > TAPER_TIMEOUT) {
-			pr_info("cool overcharge\n");
-			cool_overcharge_timer = 0;
+	if ((pdpm->cp.vbat_volt > pm_config.bat_volt_lp_lmt && is_cool_charge(pdpm))
+        || (pdpm->cp.vbat_volt > BATT_WARM_CHG_VOLT && is_warm_charge(pdpm))) {
+		if (cool_warm_overcharge_timer++ > TAPER_TIMEOUT) {
+			pr_info("cool warm overcharge\n");
+			cool_warm_overcharge_timer = 0;
 			return PM_ALGO_RET_TAPER_DONE;
 			}
 	} else {
-		cool_overcharge_timer = 0;
+		cool_warm_overcharge_timer = 0;
 	}
+
 	/* charge pump taper charge */
 	if (pdpm->cp.vbat_volt > pm_config.bat_volt_lp_lmt - TAPER_VOL_HYS
 			&& pdpm->cp.ibat_curr < pm_config.fc2_taper_current) {
