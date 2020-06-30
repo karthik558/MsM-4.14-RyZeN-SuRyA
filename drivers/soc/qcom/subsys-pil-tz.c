@@ -1029,6 +1029,14 @@ static irqreturn_t subsys_wdog_bite_irq_handler(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	pr_err("Watchdog bite received from %s!\n", d->subsys_desc.name);
 
+	//if STR_NV_SIGNATURE_DESTROYED signal is wdog,restart to recovery;add by LHL 20200630
+  	#ifdef CHECK_NV_DESTROYED_MI
+  	if (strnstr(last_modem_sfr_reason, STR_NV_SIGNATURE_DESTROYED, strlen(last_modem_sfr_reason))) {
+  		pr_err("errimei_dev: the NV has been destroyed, should restart to recovery\n");
+  		schedule_delayed_work(&create_kobj_work, msecs_to_jiffies(1*1000));
+  	}
+  	#endif
+
 	if (d->subsys_desc.system_debug)
 		panic("%s: System ramdump requested. Triggering device restart!\n",
 							__func__);
