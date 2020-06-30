@@ -75,6 +75,16 @@ static int wl2866d_i2c_read(struct wl2866d_chip *chip,
 	return ret;
 }
 
+int wl2866d_camera_power_down_all()
+{
+    int ret = -1;
+	ret = wl2866d_i2c_write(camera_chip, wl2866d_on_config[VOL_ENABLE].reg, 0);//bit1
+	if (ret < 0) {
+		pr_err("xyz wl2866d set enable failed\n");
+		return ret;
+	}
+    return ret;
+}
 
 //#ifdef __XIAOMI_CAMERA__
 //bit0:DVDD1, bit1:DVDD2, bit2:AVDD1, bit3:AVDD2

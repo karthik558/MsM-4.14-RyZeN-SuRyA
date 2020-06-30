@@ -162,6 +162,7 @@ const struct mtk_chip_config spi_ctrdata = {
 #endif
 
 static uint8_t bTouchIsAwake;
+static uint8_t enter_pocket_fail;
 
 #if WAKEUP_GESTURE
 #define WAKEUP_OFF 4
@@ -1329,10 +1330,12 @@ int32_t nvt_check_palm(uint8_t input_id, uint8_t *data)
 			ret = 0;
 		}
 		if (keycode > 0) {
+			NVT_LOG("powerkey.\n");
 			input_report_key(ts->input_dev, keycode, 1);
 			input_sync(ts->input_dev);
 			input_report_key(ts->input_dev, keycode, 0);
 			input_sync(ts->input_dev);
+			set_lct_tp_palm_status(false);
 		}
 	}
 	return ret;
@@ -1500,7 +1503,7 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 #endif /* MT_PROTOCOL_B */
 
 #if LCT_TP_PALM_EN
-	nvt_check_palm(input_id, point_data);
+	//nvt_check_palm(input_id, point_data);
 	//mutex_unlock(&ts->lock);
 	//return IRQ_HANDLED;
 #endif
@@ -1778,12 +1781,28 @@ int lct_nvt_tp_palm_callback(bool en)
 {
 	uint8_t buf[8] = {0};
 	int32_t ret = 0;
-	msleep(800);
-	NVT_LOG("init write_buf[8] = {0}");
+
+	if (en) {
+		msleep(200);
+		NVT_LOG("sleep 200ms");
+	} else {
+		if (!enter_pocket_fail) {
+			msleep(500);
+			NVT_LOG("sleep 500ms");
+		} else {
+			msleep(100);
+			NVT_LOG("sleep 100ms");
+		}
+	}
+
 	if (!bTouchIsAwake) {
 		NVT_ERR("tp is suspended, can not to set!");
+		if (!en) {
+			enter_pocket_fail = 1;
+		}
 		goto exit;
 	}
+	NVT_LOG("init write_buf[8] = {0}");
 	NVT_LOG("en=%d", en);
 	msleep(35);
 
@@ -1807,7 +1826,10 @@ int lct_nvt_tp_palm_callback(bool en)
 		NVT_ERR("Write palm command fail!");
 		goto exit;
 	}
-	set_lct_tp_palm_status(en);
+	if (!en) {
+		enter_pocket_fail = 0;
+		}
+	//set_lct_tp_palm_status(en);
 	NVT_LOG("%s PALM", en ? "Disable" : "Enable");
 
 exit:
@@ -3064,6 +3086,13 @@ static int32_t nvt_ts_resume(struct device *dev)
 #if NVT_USB_PLUGIN
 	if (g_touchscreen_usb_pulgin.valid && g_touchscreen_usb_pulgin.usb_plugged_in)
 		g_touchscreen_usb_pulgin.event_callback();
+#endif
+
+#if LCT_TP_PALM_EN
+	if (enter_pocket_fail) {
+		NVT_LOG("re-enter pocket mode\n");
+		lct_nvt_tp_palm_callback(false);
+	}
 #endif
 
 	NVT_LOG("end\n");

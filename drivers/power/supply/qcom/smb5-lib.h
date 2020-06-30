@@ -98,6 +98,7 @@ enum print_reason {
 #define OTG_VOTER                       "OTG_VOTER"
 
 #define QC2_UNSUPPORTED_VOTER           "QC2_UNSUPPORTED_VOTER"
+#define CC_UN_COMPLIANT_VOTER		"CC_UN_COMPLIANT_VOTER"
 
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
@@ -117,6 +118,9 @@ enum print_reason {
 #define CHARGER_RECHECK_DELAY_MS	30000
 #define TYPE_RECHECK_TIME_5S	5000
 #define TYPE_RECHECK_COUNT	3
+
+/* defined for un_compliant Type-C cable */
+#define CC_UN_COMPLIANT_START_DELAY_MS	700
 
 /* lct thermal */
 #define LCT_THERM_CALL_LEVEL		14
@@ -563,6 +567,7 @@ struct smb_charger {
 	struct delayed_work	bb_removal_work;
 	struct delayed_work	raise_qc3_vbus_work;
 	struct delayed_work	charger_type_recheck;
+	struct delayed_work	cc_un_compliant_charge_work;
 	struct delayed_work	lpd_ra_open_work;
 	struct delayed_work	lpd_detach_work;
 	struct delayed_work	thermal_regulation_work;
@@ -731,6 +736,9 @@ struct smb_charger {
 	/* charger type recheck */
 	int			recheck_charger;
 	int			precheck_charger_type;
+
+	/* workarounds */
+	bool			cc_un_compliant_detected;
 	bool                    snk_debug_acc_detected;
 	struct usbpd		*pd;
 	bool			use_bq_pump;
