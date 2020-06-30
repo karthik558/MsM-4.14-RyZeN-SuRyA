@@ -478,6 +478,7 @@
 	mi,six-pin-step-chg;
 	mi,use-bq-pump;
 	qcom,distinguish-qc-class-ab;
+	qcom,disable-suspend-on-collapse;
 	mi,swithc-sel-gpio = <&tlmm 94 0>;
 };
 
