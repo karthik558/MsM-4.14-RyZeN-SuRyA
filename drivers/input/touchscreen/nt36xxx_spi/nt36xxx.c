@@ -162,7 +162,8 @@ const struct mtk_chip_config spi_ctrdata = {
 #endif
 
 static uint8_t bTouchIsAwake;
-static uint8_t enter_pocket_fail;
+static uint8_t open_pocket_fail;
+static uint8_t close_pocket_fail;
 
 #if WAKEUP_GESTURE
 #define WAKEUP_OFF 4
@@ -1783,22 +1784,31 @@ int lct_nvt_tp_palm_callback(bool en)
 	int32_t ret = 0;
 
 	if (en) {
-		msleep(200);
-		NVT_LOG("sleep 200ms");
+		msleep(30);
+		NVT_LOG("sleep 30ms");
 	} else {
-		if (!enter_pocket_fail) {
-			msleep(500);
-			NVT_LOG("sleep 500ms");
+		if (!open_pocket_fail) {
+			msleep(10);
+			NVT_LOG("sleep 10ms");
 		} else {
-			msleep(100);
-			NVT_LOG("sleep 100ms");
+			msleep(20);
+			NVT_LOG("sleep 20ms");
 		}
 	}
 
 	if (!bTouchIsAwake) {
 		NVT_ERR("tp is suspended, can not to set!");
 		if (!en) {
-			enter_pocket_fail = 1;
+			open_pocket_fail = 1;
+		} else {
+			msleep(450);
+			NVT_LOG("sleep 450ms");
+			NVT_LOG("bTouchIsAwake=%d", bTouchIsAwake);
+			if (!bTouchIsAwake) {
+				close_pocket_fail = 0;
+			} else {
+				close_pocket_fail = 1;
+			}
 		}
 		goto exit;
 	}
@@ -1827,8 +1837,10 @@ int lct_nvt_tp_palm_callback(bool en)
 		goto exit;
 	}
 	if (!en) {
-		enter_pocket_fail = 0;
-		}
+		open_pocket_fail = 0;
+	} else {
+		close_pocket_fail = 0;
+	}
 	//set_lct_tp_palm_status(en);
 	NVT_LOG("%s PALM", en ? "Disable" : "Enable");
 
@@ -3067,8 +3079,15 @@ static int32_t nvt_ts_resume(struct device *dev)
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
 
 	bTouchIsAwake = 1;
-
+	NVT_LOG("bTouchIsAwake = 1\n");
 	mutex_unlock(&ts->lock);
+
+#if LCT_TP_PALM_EN
+	if (open_pocket_fail) {
+		NVT_LOG("re-open pocket mode\n");
+		lct_nvt_tp_palm_callback(false);
+	}
+#endif
 
 #if WAKEUP_GESTURE
 	if (ts->delay_gesture) {
@@ -3088,14 +3107,15 @@ static int32_t nvt_ts_resume(struct device *dev)
 		g_touchscreen_usb_pulgin.event_callback();
 #endif
 
+	NVT_LOG("end\n");
+
 #if LCT_TP_PALM_EN
-	if (enter_pocket_fail) {
-		NVT_LOG("re-enter pocket mode\n");
-		lct_nvt_tp_palm_callback(false);
+	msleep(100);
+	if (close_pocket_fail) {
+		NVT_LOG("re-close pocket mode\n");
+		lct_nvt_tp_palm_callback(true);
 	}
 #endif
-
-	NVT_LOG("end\n");
 
 	return 0;
 }
