@@ -158,7 +158,7 @@ static int qg_process_tcss_soc(struct qpnp_qg *chip, int sys_soc)
 	 }
 
 	 pr_err("[%s] qg_iterm_ua=%d\n", __func__, qg_iterm_ua);
-
+/*
 	 rc = power_supply_get_property(chip->batt_psy,
 			POWER_SUPPLY_PROP_STATUS, &prop);
 	 pr_err("charge_status = %d\n", prop.intval);
@@ -169,7 +169,7 @@ static int qg_process_tcss_soc(struct qpnp_qg *chip, int sys_soc)
 		pr_err("charge_status is not charging, rc = %d\n", rc);
 		goto exit_soc_scale;
 	 }
-
+*/
 	rc = power_supply_get_property(chip->batt_psy,
 			POWER_SUPPLY_PROP_HEALTH, &prop);
 	if (!rc && (prop.intval == POWER_SUPPLY_HEALTH_COOL ||
