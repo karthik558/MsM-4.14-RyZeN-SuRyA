@@ -498,6 +498,7 @@ static struct device_attribute power_supply_attrs[] = {
 #ifdef CONFIG_REVERSE_CHARGE
 	POWER_SUPPLY_ATTR(reverse_charge_mode),
 #endif
+	POWER_SUPPLY_ATTR(charge_awske_state),
 	/* DIV 2 properties */
       /*POWER_SUPPLY_ATTR(div_2_mode),
 	POWER_SUPPLY_ATTR(reverse_chg_mode),
