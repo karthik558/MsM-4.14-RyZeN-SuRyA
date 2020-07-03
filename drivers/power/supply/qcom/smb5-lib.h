@@ -66,6 +66,7 @@ enum print_reason {
 #define PL_FCC_LOW_VOTER		"PL_FCC_LOW_VOTER"
 #define WBC_VOTER			"WBC_VOTER"
 #define HW_LIMIT_VOTER			"HW_LIMIT_VOTER"
+#define CHG_AWAKE_VOTER			"CHG_AWAKE_VOTER"
 #define PL_SMB_EN_VOTER			"PL_SMB_EN_VOTER"
 #define FORCE_RECHARGE_VOTER		"FORCE_RECHARGE_VOTER"
 #define LPD_VOTER			"LPD_VOTER"
@@ -1022,4 +1023,6 @@ int smblib_set_prop_battery_charging_enabled(struct smb_charger *chg,
 #ifdef CONFIG_REVERSE_CHARGE
 void rerun_reverse_check(struct smb_charger *chg);
 #endif
+int smblib_get_prop_batt_awake(struct smb_charger *chg,
+				union power_supply_propval *val);
 #endif /* __SMB5_CHARGER_H */

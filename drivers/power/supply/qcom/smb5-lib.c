@@ -1256,9 +1256,10 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 		 * detected as as SDP
 		 */
 		if (!(apsd_result->pst == POWER_SUPPLY_TYPE_USB_FLOAT &&
-				chg->real_charger_type == POWER_SUPPLY_TYPE_USB))
+				chg->real_charger_type == POWER_SUPPLY_TYPE_USB)){
 			chg->real_charger_type = apsd_result->pst;
 			chg->usb_psy_desc.type = apsd_result->pst;
+		}
 	}
 
 	smblib_dbg(chg, PR_MISC, "APSD=%s PD=%d QC3P5=%d\n",
@@ -2386,6 +2387,16 @@ done:
 	return rc;
 }
 
+int smblib_get_prop_batt_awake(struct smb_charger *chg,
+				union power_supply_propval *val)
+{
+	int rc = 0;
+	int effective_awake_state;
+	effective_awake_state = get_effective_result_locked(chg->awake_votable);
+	val->intval = effective_awake_state;
+	return rc;
+}
+
 int smblib_get_prop_system_temp_level(struct smb_charger *chg,
 				union power_supply_propval *val)
 {
@@ -2482,12 +2493,14 @@ int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 	stat = stat & BATTERY_CHARGER_STATUS_MASK;
 	val->intval = (stat == TERMINATE_CHARGE);
 
+	/*  if charge is done, clear CHG_AWAKE_VOTER */
 	if (val->intval == 1) {
 		/*disable FFC when charge done*/
 		if (chg->support_ffc) {
 			if (smblib_get_fastcharge_mode(chg) == 1)
 				rc = smblib_set_fastcharge_mode(chg, false);
 		}
+		vote(chg->awake_votable, CHG_AWAKE_VOTER, false, 0);
 	}
 
 	return 0;
@@ -6057,6 +6070,8 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 	vbus_rising = (bool)(stat & USBIN_PLUGIN_RT_STS_BIT);
 
 	if (vbus_rising) {
+		/* hold chg_awake wakeup source when charger is present */
+		vote(chg->awake_votable, CHG_AWAKE_VOTER, true, 0);
 		/* Remove FCC_STEPPER 1.5A init vote to allow FCC ramp up */
 		if (chg->fcc_stepper_enable)
 			vote(chg->fcc_votable, FCC_STEPPER_VOTER, false, 0);
@@ -6086,6 +6101,10 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 			typec_src_removal(chg);
 			chg->cc_un_compliant_detected = false;
 		}
+
+		/* clear chg_awake wakeup source when charger is absent */
+		vote(chg->awake_votable, CHG_AWAKE_VOTER, false, 0);
+
 		/* Force 1500mA FCC on USB removal if fcc stepper is enabled */
 		if (chg->fcc_stepper_enable)
 			vote(chg->fcc_votable, FCC_STEPPER_VOTER,
@@ -6119,6 +6138,9 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 	if (vbus_rising) {
 		cancel_delayed_work_sync(&chg->pr_swap_detach_work);
 		vote(chg->awake_votable, DETACH_DETECT_VOTER, false, 0);
+		/* hold a wakeup source when charger is present */
+		vote(chg->awake_votable, CHG_AWAKE_VOTER, true, 0);
+
 		rc = smblib_request_dpdm(chg, true);
 		if (rc < 0)
 			smblib_err(chg, "Couldn't to enable DPDM rc=%d\n", rc);
@@ -6220,6 +6242,10 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 		chg->hvdcp_recheck_status = false;
 		chg->recheck_charger = false;
 		chg->precheck_charger_type = POWER_SUPPLY_TYPE_UNKNOWN;
+
+		/* clear chg_awake wakeup source when charger is absent */
+		vote(chg->awake_votable, CHG_AWAKE_VOTER, false, 0);
+
 		smblib_update_usb_type(chg);
 	}
 
@@ -7127,6 +7153,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->awake_votable, PL_DELAY_VOTER, false, 0);
 
 	/* reset our own voters */
+	vote(chg->awake_votable, CHG_AWAKE_VOTER, false, 0);
 	vote(chg->fcc_votable, CLASSA_QC_FCC_VOTER, false, 0);
 	vote(chg->usb_icl_votable, QC_A_CP_ICL_MAX_VOTER, false, 0);
 	vote(chg->usb_icl_votable, PD_VERIFED_VOTER, false, 0);

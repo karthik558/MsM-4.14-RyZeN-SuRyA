@@ -3376,17 +3376,32 @@ static int qg_load_battery_profile(struct qpnp_qg *chip)
 			if (rc < 0) {
 				pr_err("qg_load_battery_profile : get page0 error.\n");
 			} else {
-				if (pval.arrayval[0] == 'A') {
+				if ((pval.arrayval[0] == 'A') ||  (pval.arrayval[0] == 'N') ){
+					if ((pval.arrayval[3] == '5') && (pval.arrayval[4] == '7') ) {
+						profile_node = of_batterydata_get_best_profile(chip->batt_node,
+							chip->batt_id_ohm / 1000, "m703-pm7150b-atl-5160mah");
+						chip->profile_judge_done = true;
+						profile_6000mah_judge = false;
+				       }else if ((pval.arrayval[3] == '6') && (pval.arrayval[4] == '1') ) {
+						profile_node = of_batterydata_get_best_profile(chip->batt_node,
+							chip->batt_id_ohm / 1000, "m703-atl-6000mah");
+						chip->profile_judge_done = true;
+						profile_6000mah_judge = true;
+				        }else{
+						profile_node = of_batterydata_get_best_profile(chip->batt_node,
+							chip->batt_id_ohm / 1000, "m703-pm7150b-atl-5160mah");
+						profile_6000mah_judge = false;
+						pr_err("lct profile_6000mah_judge=%d,chip->profile_judge_done=%d,pval.arrayval[0]=%c,pval.arrayval[3]=%c,pval.arrayval[4]=%c\n",
+				                        profile_6000mah_judge,chip->profile_judge_done,pval.arrayval[0],pval.arrayval[3],pval.arrayval[4]);
+				       }
+				}else{
 					profile_node = of_batterydata_get_best_profile(chip->batt_node,
-						chip->batt_id_ohm / 1000, "m703-atl-6000mah");
-					chip->profile_judge_done = true;
-					profile_6000mah_judge = true;
-				} else if (pval.arrayval[0] == 'N') {
-					profile_node = of_batterydata_get_best_profile(chip->batt_node,
-						chip->batt_id_ohm / 1000, "m703-pm7150b-atl-5160mah");
-					chip->profile_judge_done = true;
-                                        profile_6000mah_judge = false;
+							chip->batt_id_ohm / 1000, "m703-pm7150b-atl-5160mah");
+					profile_6000mah_judge = false;
+					pr_err("lct profile_6000mah_judge=%d,chip->profile_judge_done=%d,pval.arrayval[0]=%c,pval.arrayval[3]=%c,pval.arrayval[4]=%c\n",
+	                                          profile_6000mah_judge,chip->profile_judge_done,pval.arrayval[0],pval.arrayval[3],pval.arrayval[4]);
 				}
+
 			}
 		}
 

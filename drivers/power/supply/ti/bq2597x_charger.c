@@ -297,7 +297,8 @@ struct bq2597x {
 	struct power_supply_config psy_cfg;
 	struct power_supply *fc2_psy;
 	struct pinctrl		*pinctrl;
-        struct pinctrl_state	*pinctrl_state1;
+	struct pinctrl_state	*pinctrl_state1;
+	struct power_supply *batt_psy;
 };
 
 static int bq_debug_flag;
@@ -2268,6 +2269,32 @@ static int bq_charger_int(struct bq2597x *chip)
 }
 
 
+static int get_charge_awake_state(struct bq2597x *bq)
+{
+	int ret;
+	union power_supply_propval val = {0,};
+
+	if (!bq->batt_psy)
+		bq->batt_psy = power_supply_get_by_name("battery");
+
+	if(bq->batt_psy){
+
+		ret = power_supply_get_property(bq->batt_psy,
+				POWER_SUPPLY_PROP_CHARGE_AWAKE_STATE, &val);
+
+		if (ret < 0) {
+			pr_info("Couldn't get awake:%d\n", ret);
+			return 0;
+		}
+
+		return val.intval;
+	}
+
+	return 0;
+}
+
+
+
 static int bq2597x_charger_probe(struct i2c_client *client,
 					const struct i2c_device_id *id)
 {
@@ -2380,6 +2407,11 @@ static int bq2597x_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bq2597x *bq = i2c_get_clientdata(client);
+	int bq_charge_awake = 0;
+	bq_charge_awake = get_charge_awake_state(bq);
+	if(!!bq_charge_awake){
+		return -16;
+	}
 
 	mutex_lock(&bq->irq_complete);
 	bq->resume_completed = false;
@@ -2407,7 +2439,8 @@ static int bq2597x_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bq2597x *bq = i2c_get_clientdata(client);
-
+	if(bq->resume_completed)
+		return 0;
 	mutex_lock(&bq->irq_complete);
 	bq->resume_completed = true;
 	if (bq->irq_waiting) {

@@ -1759,6 +1759,7 @@ static enum power_supply_property smb5_batt_props[] = {
 #ifdef CONFIG_REVERSE_CHARGE
 	POWER_SUPPLY_PROP_REVERSE_CHARGE_MODE,
 #endif
+	POWER_SUPPLY_PROP_CHARGE_AWAKE_STATE,
 };
 
 #define DEBUG_ACCESSORY_TEMP_DECIDEGC	250
@@ -1926,6 +1927,9 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 		val->intval =  chg->reverse_charge_mode;
 		break;
 #endif
+	case POWER_SUPPLY_PROP_CHARGE_AWAKE_STATE:
+		rc = smblib_get_prop_batt_awake(chg, val);
+		break;
 	default:
 		pr_err("batt power supply prop %d not supported\n", psp);
 		return -EINVAL;
