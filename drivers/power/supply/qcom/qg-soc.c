@@ -440,8 +440,16 @@ static bool maint_soc_timeout(struct qpnp_qg *chip)
 
 static void update_msoc(struct qpnp_qg *chip)
 {
-	int rc = 0, sdam_soc, batt_temp = 0;
+	int rc = 0, sdam_soc, batt_temp = 0, batt_cur = 0;
 	bool input_present = is_input_present(chip);
+
+	rc = qg_get_battery_current(chip, &batt_cur);
+	if (rc < 0) {
+		pr_err("Failed to read BATT_CUR rc=%d\n", rc);
+	}
+
+	qg_dbg(chip, QG_DEBUG_SOC, "batt_cur=%d input_present=%d msoc=%d catch_up_soc=%d last_fifo_i_ua=%d\n",
+			batt_cur, input_present, chip->msoc, chip->catch_up_soc, chip->last_fifo_i_ua);
 
 	if (chip->catch_up_soc > chip->msoc) {
 		/* SOC increased */
@@ -449,7 +457,9 @@ static void update_msoc(struct qpnp_qg *chip)
 			chip->msoc += chip->dt.delta_soc;
 	} else if (chip->catch_up_soc < chip->msoc) {
 		/* SOC dropped */
-		chip->msoc -= chip->dt.delta_soc;
+		if ((batt_cur > 0) && (input_present == false)) {
+			chip->msoc -= chip->dt.delta_soc;
+		}
 	}
 	chip->msoc = CAP(0, 100, chip->msoc);
 
