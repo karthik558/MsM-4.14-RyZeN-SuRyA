@@ -22,7 +22,6 @@
 
 #define STEP_CHG_VOTER		"STEP_CHG_VOTER"
 #define JEITA_VOTER		"JEITA_VOTER"
-#define JEITA_BELOW_ZERO_VOTER		"JEITA_BELOW_ZERO_VOTER"
 
 #define is_between(left, right, value) \
 		(((left) >= (right) && (left) >= (value) \
@@ -453,8 +452,8 @@ static int get_val(struct range_data *range, int hysteresis, int current_index,
 	 * temperature is a signed int, so cannot compare them when battery temp is below 0,
 	 * we treat it as 0 degree when the parameter threshold(battery temp) is below 0.
 	 */
-	if (threshold < 0)
-		threshold = 0;
+	//if (threshold < 0)
+	//	threshold = 0;
 
 	/*
 	 * If the threshold is lesser than the minimum allowed range,
@@ -727,14 +726,6 @@ static int handle_jeita(struct step_chg_info *chip)
 
 	batt_temp = pval.intval;
 
-	if ((batt_temp < 0) &&(batt_temp >=-100)) {
-		vote(chip->fv_votable, JEITA_BELOW_ZERO_VOTER, true, chip->jeita_fv_config->fv_cfg[0].value);
-		vote(chip->fcc_votable, JEITA_BELOW_ZERO_VOTER, true, chip->jeita_fcc_config->fcc_cfg[0].value);
-	}else{
-		vote(chip->fv_votable, JEITA_BELOW_ZERO_VOTER, false, 0);
-		vote(chip->fcc_votable, JEITA_BELOW_ZERO_VOTER, false, 0);
-	}
-
 	rc = power_supply_get_property(chip->bms_psy,
 				POWER_SUPPLY_PROP_CAPACITY, &pval);
 	if (rc < 0) {
@@ -782,7 +773,7 @@ static int handle_jeita(struct step_chg_info *chip)
 		goto set_jeita_fv;
 
 	pr_err("%s = %d FCC = %duA FV = %duV\n",
-		chip->jeita_fcc_config->param.prop_name, pval.intval, fcc_ua, fv_uv);
+		chip->jeita_fcc_config->param.prop_name, batt_temp, fcc_ua, fv_uv);
 
 	/* set and clear fast charge mode when soft jeita trigger and clear */
 	rc = power_supply_get_property(chip->usb_psy,
