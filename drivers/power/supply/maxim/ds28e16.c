@@ -111,12 +111,13 @@ short Read_RomID(unsigned char *RomID)
 	unsigned char i;
 	unsigned char crc = 0x00;
 
-	ds_dbg("getian--RomID = %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
+	/*ds_dbg("getian--RomID = %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
 	RomID[0], RomID[1], RomID[2], RomID[3],
 	RomID[4], RomID[5], RomID[6], RomID[7]);
 	ds_dbg("getian--mi_romid = %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
 	mi_romid[0], mi_romid[1], mi_romid[2], mi_romid[3],
 	mi_romid[4], mi_romid[5], mi_romid[6], mi_romid[7]);
+	*/
 	if (flag_mi_romid == 2) {
 		memcpy(RomID, mi_romid, 8);
 		ds_log("getian---Read_RomID00\n");
@@ -124,9 +125,8 @@ short Read_RomID(unsigned char *RomID)
 	}
 
 	if ((ow_reset()) != 0) {
-		ds_err("Failed to reset ds28e16!\n");
+		ds_err("Read_RomID: Failed to reset ds28e16!\n");
 		ow_reset();
-		ds_log("getian---Read_RomID11\n");
 		return ERROR_NO_DEVICE;
 	}
 
@@ -149,9 +149,6 @@ short Read_RomID(unsigned char *RomID)
 		else
 			flag_mi_romid = 2;
 		memcpy(mi_romid, RomID, 8);
-		ds_dbg("getian--RomID = %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
-		RomID[0], RomID[1], RomID[2], RomID[3],
-		RomID[4], RomID[5], RomID[6], RomID[7]);
 		ds_dbg("getian--mi_romid = %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
 		mi_romid[0], mi_romid[1], mi_romid[2], mi_romid[3],
 		mi_romid[4], mi_romid[5], mi_romid[6], mi_romid[7]);
@@ -340,6 +337,34 @@ int DS28E16_cmd_readStatus(unsigned char *data)
 	ds_log("getian---DS28E16_cmd_readStatus22\n");
 	return DS_FALSE;
 }
+
+void DS28E16_cmd_romid_pre(void)
+{
+	unsigned char write_buf[255];
+	int write_len = 0;
+	int len_byte = 1;
+	int i;
+
+	ow_reset();
+	write_byte(CMD_SKIP_ROM);
+
+	write_buf[write_len++] = CMD_START;
+	write_buf[write_len++] = len_byte;
+	write_buf[write_len++] = CMD_READ_STATUS;
+	for (i = 0; i < write_len; i++)
+		write_byte(write_buf[i]);
+
+	write_byte(CMD_RELEASE_BYTE);
+		Delay_us(1000*DELAY_DS28E16_EE_READ*tm);
+
+	//discard 11 bytes to get romid
+	for (i = 0; i < 11; i++)
+		read_byte();
+	ow_reset();
+
+	ds_log("DS28E16_cmd_romid_pre done\n");
+}
+
 
 //--------------------------------------------------------------------------
 /// 'Read Memory' command
@@ -677,7 +702,7 @@ unsigned char *challenge, unsigned char *hmac)
 	write_len += 32;
 
 	ds_dbg("computeReadPageAuthen:\n");
-	ds_dbg("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+	/*ds_dbg("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
 			write_buf[0], write_buf[1], write_buf[2], write_buf[3],
 			write_buf[4], write_buf[5], write_buf[6], write_buf[7],
 			write_buf[8], write_buf[9], write_buf[10], write_buf[11],
@@ -687,11 +712,12 @@ unsigned char *challenge, unsigned char *hmac)
 			write_buf[24], write_buf[25], write_buf[26], write_buf[27],
 			write_buf[28], write_buf[29], write_buf[30], write_buf[31],
 			write_buf[32], write_buf[33], write_buf[34]);
+	*/
 
 	if (DS28E16_standard_cmd_flow(write_buf, DELAY_DS28E16_EE_WRITE, read_buf, &read_len, write_len)) {
 		last_result_byte = read_buf[0];
 		if (read_buf[0] == RESULT_SUCCESS) {
-			ds_dbg("hmac read_buf:\n");
+			/*ds_dbg("hmac read_buf:\n");
 			ds_dbg("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
 			read_buf[0], read_buf[1], read_buf[2], read_buf[3],
 			read_buf[4], read_buf[5], read_buf[6], read_buf[7],
@@ -701,7 +727,6 @@ unsigned char *challenge, unsigned char *hmac)
 			read_buf[20], read_buf[21], read_buf[22], read_buf[23],
 			read_buf[24], read_buf[25], read_buf[26], read_buf[27],
 			read_buf[28], read_buf[29], read_buf[30], read_buf[31], read_buf[32]);
-			memcpy(hmac, &read_buf[1], 32);
 			ds_dbg("hmac:\n");
 			ds_dbg("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
 			hmac[0], hmac[1], hmac[2], hmac[3],
@@ -712,6 +737,8 @@ unsigned char *challenge, unsigned char *hmac)
 			hmac[20], hmac[21], hmac[22], hmac[23],
 			hmac[24], hmac[25], hmac[26], hmac[27],
 			hmac[28], hmac[29], hmac[30], hmac[31]);
+			*/
+			memcpy(hmac, &read_buf[1], 32);
 			return DS_TRUE;
 		}
 	}
@@ -758,7 +785,7 @@ int pg, unsigned char *partial)
 	memcpy(&write_buf[write_len], partial, 32); // Partial Secret
 	write_len += 32;
 
-	ds_dbg("computeS_Secret:\n");
+	/*ds_dbg("computeS_Secret:\n");
 	ds_dbg("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
 			write_buf[0], write_buf[1], write_buf[2], write_buf[3],
 			write_buf[4], write_buf[5], write_buf[6], write_buf[7],
@@ -769,6 +796,7 @@ int pg, unsigned char *partial)
 			write_buf[24], write_buf[25], write_buf[26], write_buf[27],
 			write_buf[28], write_buf[29], write_buf[30], write_buf[31],
 			write_buf[32], write_buf[33], write_buf[34]);
+	*/
 
 	if (DS28E16_standard_cmd_flow(write_buf, DELAY_DS28E16_EE_WRITE,
 	read_buf, &read_len, write_len)) {
@@ -827,7 +855,7 @@ unsigned char *Challenge, unsigned char *Secret_Seeds, unsigned char *S_Secret)
 		return ERROR_COMPUTE_MAC;
 	}
 
-	ds_dbg("%02x %02x %02x %02x", anon, bdconst, S_Secret_PageNum, PageNum);
+	/*ds_dbg("%02x %02x %02x %02x", anon, bdconst, S_Secret_PageNum, PageNum);
 
 	ds_dbg("Seeds:\n");
 	ds_dbg("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
@@ -872,6 +900,7 @@ unsigned char *Challenge, unsigned char *Secret_Seeds, unsigned char *S_Secret)
 			MAC_Read_Value[20], MAC_Read_Value[21], MAC_Read_Value[22], MAC_Read_Value[23],
 			MAC_Read_Value[24], MAC_Read_Value[25], MAC_Read_Value[26], MAC_Read_Value[27],
 			MAC_Read_Value[28], MAC_Read_Value[29], MAC_Read_Value[30], MAC_Read_Value[31]);
+	*/
 
 	// read the page data
 	flag = ds28el16_get_page_data_retry(PageNum, PageData);
@@ -910,7 +939,7 @@ unsigned char *Challenge, unsigned char *Secret_Seeds, unsigned char *S_Secret)
 	// calculate the MAC
 	sha3_256_hmac(S_Secret, 32, MAC_Computer_Datainput, msg_len, CAL_MAC);
 
-	ds_dbg("host data:\n");
+	/*ds_dbg("host data:\n");
 	ds_dbg("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
 			MAC_Computer_Datainput[0], MAC_Computer_Datainput[1], MAC_Computer_Datainput[2],
 			MAC_Computer_Datainput[3], MAC_Computer_Datainput[4], MAC_Computer_Datainput[5],
@@ -950,6 +979,7 @@ unsigned char *Challenge, unsigned char *Secret_Seeds, unsigned char *S_Secret)
 			CAL_MAC[20], CAL_MAC[21], CAL_MAC[22], CAL_MAC[23],
 			CAL_MAC[24], CAL_MAC[25], CAL_MAC[26], CAL_MAC[27],
 			CAL_MAC[28], CAL_MAC[29], CAL_MAC[30], CAL_MAC[31]);
+	*/
 
 	for (i = 0; i < 32; i++) {
 		if (CAL_MAC[i] != MAC_Read_Value[i])
@@ -976,18 +1006,16 @@ unsigned char *Challenge, unsigned char *Secret_Seeds, unsigned char *S_Secret)
 static int ds28el16_Read_RomID_retry(unsigned char *RomID)
 {
 	int i;
-	unsigned char data[50];
 
+	ds_info("read rom id communication start ...\n");
 	for (i = 0; i < GET_ROM_ID_RETRY; i++) {
-		ds_info("read rom id communication start %d...\n", i);
-		if (DS28E16_cmd_readStatus(data) == DS_TRUE) {
-			if (Read_RomID(RomID) == DS_TRUE) {
-				ds_log("getian---ds28el16_Read_RomID_retry00\n");
-				return DS_TRUE;
-			}
+		DS28E16_cmd_romid_pre();
+		if (Read_RomID(RomID) == DS_TRUE) {
+			ds_log("ds28el16_Read_RomID_retry success %d\n", i);
+			return DS_TRUE;
 		}
 	}
-	ds_log("getian---ds28el16_Read_RomID_retry11\n");
+	ds_log("ds28el16_Read_RomID_retry fail\n");
 	return DS_FALSE;
 }
 
@@ -1033,7 +1061,7 @@ static int ds28el16_get_page_data_retry(int page, unsigned char *data)
 
 		if (DS28E16_cmd_readMemory(page, data) == DS_TRUE) {
 			ds_dbg("page number is %d\n", page);
-			ds_dbg("page data:\n");
+			/*ds_dbg("page data:\n");
 			ds_dbg("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
 			data[0], data[1], data[2], data[3],
 			data[4], data[5], data[6], data[7],
@@ -1052,7 +1080,7 @@ static int ds28el16_get_page_data_retry(int page, unsigned char *data)
 			mi_page1_data[0], mi_page1_data[1], mi_page1_data[2], mi_page1_data[3],
 			mi_page1_data[4], mi_page1_data[5], mi_page1_data[6], mi_page1_data[7],
 			mi_page1_data[8], mi_page1_data[9], mi_page1_data[10], mi_page1_data[11],
-			mi_page1_data[12], mi_page1_data[13], mi_page1_data[14], mi_page1_data[15]);
+			mi_page1_data[12], mi_page1_data[13], mi_page1_data[14], mi_page1_data[15]);*/
 			ds_dbg("flag_mi_counter is %d\n", flag_mi_counter);
 			return DS_TRUE;
 		}
@@ -1350,11 +1378,13 @@ struct device_attribute *attr, char *buf)
 		} else {
 			ds_log("Read_RomID fail!\n");
 		}
-		ds_dbg("RomID = %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
-		RomID[0], RomID[1], RomID[2], RomID[3],
-		RomID[4], RomID[5], RomID[6], RomID[7]);
 		Delay_us(1000);
 	}
+
+	/*ds_dbg("RomID = %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
+	RomID[0], RomID[1], RomID[2], RomID[3],
+	RomID[4], RomID[5], RomID[6], RomID[7]);
+	*/
 	ds_log("test done\nsuccess time : %d\n", count);
 	return scnprintf(buf, PAGE_SIZE,
 	"Success = %d\nRomID = %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
