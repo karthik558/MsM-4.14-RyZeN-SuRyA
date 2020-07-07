@@ -43,6 +43,7 @@
 #include "sde_core_perf.h"
 #include "sde_trace.h"
 #include "dsi_drm.h"
+#include "xiaomi_frame_stat.h"
 
 #define SDE_PSTATES_MAX (SDE_STAGE_MAX * 4)
 #define SDE_MULTIRECT_PLANE_MAX (SDE_STAGE_MAX * 2)
@@ -54,6 +55,8 @@ struct sde_crtc_custom_events {
 };
 
 struct drm_crtc *gcrtc;
+bool idle_status;
+extern struct frame_stat fm_stat;
 
 static int sde_crtc_power_interrupt_handler(struct drm_crtc *crtc_drm,
 	bool en, struct sde_irq_callback *ad_irq);
@@ -3042,11 +3045,13 @@ static void sde_crtc_frame_event_work(struct kthread_work *work)
 		SDE_ATRACE_END("signal_release_fence");
 	}
 
-	if (fevent->event & SDE_ENCODER_FRAME_EVENT_SIGNAL_RETIRE_FENCE)
+	if (fevent->event & SDE_ENCODER_FRAME_EVENT_SIGNAL_RETIRE_FENCE) {
 		/* this api should be called without spin_lock */
 		_sde_crtc_retire_event(fevent->connector, fevent->ts,
 				(fevent->event & SDE_ENCODER_FRAME_EVENT_ERROR)
 				? SDE_FENCE_SIGNAL_ERROR : SDE_FENCE_SIGNAL);
+		frame_stat_collector(0, RETIRE_FENCE_TS);
+	}
 
 	if (fevent->event & SDE_ENCODER_FRAME_EVENT_PANEL_DEAD)
 		SDE_ERROR("crtc%d ts:%lld received panel dead event\n",
@@ -3781,6 +3786,7 @@ static void sde_crtc_atomic_begin(struct drm_crtc *crtc,
 	if (sde_encoder_check_curr_mode(sde_crtc->mixers[0].encoder,
 					MSM_DISPLAY_VIDEO_MODE) &&
 		kthread_cancel_delayed_work_sync(&sde_crtc->idle_notify_work))
+		idle_status = false;
 		SDE_DEBUG("idle notify work cancelled\n");
 
 	/*
@@ -3826,6 +3832,9 @@ static void sde_crtc_atomic_flush(struct drm_crtc *crtc,
 	struct sde_kms *sde_kms;
 	int idle_time = 0;
 	static int idle_time_enable = false;
+	ktime_t get_input_fence_ts;
+	ktime_t now;
+	s64 duration;
 
 	if (!crtc || !crtc->dev || !crtc->dev->dev_private) {
 		SDE_ERROR("invalid crtc\n");
@@ -3891,7 +3900,11 @@ static void sde_crtc_atomic_flush(struct drm_crtc *crtc,
 		sde_plane_restore(plane);
 
 	/* wait for acquire fences before anything else is done */
+	now = ktime_get();
 	_sde_crtc_wait_for_fences(crtc);
+	get_input_fence_ts = ktime_get();
+	duration = ktime_to_ns(ktime_sub(get_input_fence_ts, now));
+	frame_stat_collector(duration, GET_INPUT_FENCE_TS);
 
 	/* schedule the idle notify delayed work */
 	if (sde_encoder_check_curr_mode(sde_crtc->mixers[0].encoder,
@@ -6847,7 +6860,7 @@ static void __sde_crtc_idle_notify_work(struct kthread_work *work)
 		event.length = sizeof(u32);
 		msm_mode_object_event_notify(&crtc->base, crtc->dev,
 				&event, (u8 *)&ret);
-
+		idle_status = true;
 		SDE_DEBUG("crtc[%d]: idle timeout notified\n", crtc->base.id);
 	}
 }
@@ -6873,10 +6886,15 @@ void sde_crtc_touch_notify(void)
 
 		if (dsi_display && dsi_display->is_prim_display && dsi_display->panel
 			&& !dsi_display->panel->panel_max_frame_rate) {
+			if (dsi_display->panel->dfps_caps.smart_fps_support && fm_stat.enabled) {
+				dsi_display->panel->panel_max_frame_rate = true;
+				calc_fps(0, (int)true);
+			} else {
 				event.type = DRM_EVENT_TOUCH;
 				event.length = sizeof(u32);
 				msm_mode_object_event_notify(&gcrtc->base, gcrtc->dev,
 					&event, (u8 *)&ret);
+			}
 			gcrtc = NULL;
 		}
 	}
