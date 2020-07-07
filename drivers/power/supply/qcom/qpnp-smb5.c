@@ -3831,9 +3831,9 @@ static int lct_unregister_powermanger(struct smb_charger *chg)
 
 
 #ifdef CONFIG_REVERSE_CHARGE
-#define  BATT_10_BELOW_ZERO_THRESHOLD    (310)
-#define  BATT_15_THRESHOLD    340
-#define  BATT_50_THRESHOLD    370
+#define  BATT_10_BELOW_ZERO_THRESHOLD    (-100)
+#define  BATT_15_THRESHOLD    150
+#define  BATT_50_THRESHOLD    500
 #define  BATT_TEMP_HYSTERESIS     10
 #define  OTG_STEP_HYSTERISIS_DELAY_US		5000000 /* 5 secs */
 #define  OTG_WAKELOCK_HOLD_TIME 2000 /* in ms */
