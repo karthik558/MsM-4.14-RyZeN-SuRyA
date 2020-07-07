@@ -101,6 +101,8 @@ enum print_reason {
 #define QC2_UNSUPPORTED_VOTER           "QC2_UNSUPPORTED_VOTER"
 #define CC_UN_COMPLIANT_VOTER		"CC_UN_COMPLIANT_VOTER"
 
+#define JEITA_VOTER                     "JEITA_VOTER"
+
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
 
