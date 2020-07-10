@@ -237,6 +237,7 @@ struct dsi_panel {
 
 	u8 panel_read_data[BUF_LEN_MAX];
 	struct dsi_read_config xy_coordinate_cmds;
+	struct dsi_read_config max_luminance_cmds;
 	bool panel_max_frame_rate;
 };
 
