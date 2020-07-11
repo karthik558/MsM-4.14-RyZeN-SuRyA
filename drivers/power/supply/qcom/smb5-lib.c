@@ -6081,7 +6081,7 @@ static void reduce_fcc_work(struct work_struct *work)
 		if (chg->esr_work_status == ESR_CHECK_FCC_NOLIMIT) {
 			effective_fcc -= REDUCED_CURRENT;
 			chg->esr_work_status = ESR_CHECK_FCC_LIMITED;
-			chg->esr_reduce_fcc = true;
+			//chg->esr_reduce_fcc = true;
 			reduce_fcc = true;
 			esr_work_time = ESR_WORK_TIME_2S;
 		} else {
@@ -6099,7 +6099,7 @@ static void reduce_fcc_work(struct work_struct *work)
 	vote(chg->fcc_votable, ESR_WORK_VOTER, reduce_fcc, effective_fcc);
 	if (reduce_fcc == false) {
 		msleep(500);
-		chg->esr_reduce_fcc = false;
+		//chg->esr_reduce_fcc = false;
 	}
 	schedule_delayed_work(&chg->reduce_fcc_work,
 				msecs_to_jiffies(esr_work_time));
@@ -7341,7 +7341,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	chg->qc2_unsupported = false;
 	chg->recheck_charger = false;
 	chg->snk_debug_acc_detected = false;
-	chg->esr_reduce_fcc = false;
+	//chg->esr_reduce_fcc = false;
 	pr_err("%s:", __func__);
 	if (chg->pd_verifed)
 		chg->pd_verifed = false;
@@ -8044,6 +8044,8 @@ static int smblib_get_step_vfloat_index(struct smb_charger *chg,
 	return i;
 }
 
+// use the function form bq driver in 2020.07.09 by duanyanwei
+/*
 static void smblib_dynamic_adjust_fcc(struct smb_charger *chg, bool enable)
 {
 	int rc = 0;
@@ -8075,6 +8077,7 @@ static void smblib_dynamic_adjust_fcc(struct smb_charger *chg, bool enable)
 
 	pr_err("smblib_dynamic_adjust_fcc: batt_current_now = %d\n", batt_current_now);
 }
+*/
 
 static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 {
@@ -8086,12 +8089,12 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 	int main_charge_type;
 	int interval_ms = STEP_CHG_DELAYED_MONITOR_MS;
 	int fcc_ua = 0, ibat_ua = 0, capacity = 0;
-	static bool add_fcc = true;
+	//static bool add_fcc = true;
 	union power_supply_propval pval = {0, };
 
 	rc = smblib_is_input_present(chg, &input_present);
 
-	pr_err("input_present: %d, esr_reduce_fcc=%d\n", input_present, chg->esr_reduce_fcc);
+	pr_err("input_present: %d\n", input_present);
 	if (rc < 0)
 		return;
 
@@ -8157,13 +8160,14 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 		vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER,
 				true, chg->six_pin_step_cfg[chg->index_vfloat].fcc_step_ua);
 		chg->init_start_vbat_checked = true;
-		add_fcc = true;
-		chg->esr_reduce_fcc = false;
+		//add_fcc = true;
+		//chg->esr_reduce_fcc = false;
 	}
 
+	//use the function form bq driver in 2020.07.09 by duanyanwei
 	/* When the battery current is greater than 6A,
 	adjust ffc to ensure that it does not exceed 6A */
-	smblib_dynamic_adjust_fcc(chg, add_fcc);
+	//smblib_dynamic_adjust_fcc(chg, add_fcc);
 
 	rc = smblib_get_prop_batt_charge_type(chg, &pval);
 	if (rc < 0) {
@@ -8198,7 +8202,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 			(fcc_ua > chg->six_pin_step_cfg[chg->
 			index_vfloat + 1].fcc_step_ua)) {
 			vote(chg->fcc_votable, SIX_PIN_VFLOAT_VOTER, true, fcc_ua);
-			add_fcc = false;
+			//add_fcc = false;
 		}
 	}
 
@@ -8230,7 +8234,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 					true, chg->six_pin_step_cfg[chg->index_vfloat].fcc_step_ua);
 			vote(chg->fv_votable, SIX_PIN_VFLOAT_VOTER,
 					true, chg->six_pin_step_cfg[chg->index_vfloat].vfloat_step_uv);
-			add_fcc = true;
+			//add_fcc = true;
 		}
 	}
 

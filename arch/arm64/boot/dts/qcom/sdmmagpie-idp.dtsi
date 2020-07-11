@@ -469,11 +469,11 @@
 	qcom,smb-internal-pull-kohm = <0>;
 	qcom,usbpd-phandle = <&pm6150_pdphy>;
 	mi,support-ffc;
-	mi,six-pin-step-chg-params = <4250000 5950000
-								4450000 5300000
-								4480000 3900000>;
-	mi,six-pin-step-chg-params_2 = <4250000 5950000
-									4450000 5300000
+	mi,six-pin-step-chg-params = <4250000 6000000
+								4450000 5400000
+								4480000 4000000>;
+	mi,six-pin-step-chg-params_2 = <4250000 6000000
+									4450000 5400000
 									4480000 4680000>;
 	mi,six-pin-step-chg;
 	mi,use-bq-pump;
@@ -588,7 +588,7 @@
 			//ti,bq2597x,bus-ocp-threshold = <2200>;
 			//ti,bq2597x,bus-ocp-alarm-threshold = <2000>;
 			ti,bq2597x,bus-ocp-threshold = <3500>;
-			ti,bq2597x,bus-ocp-alarm-threshold = <3000>;
+			ti,bq2597x,bus-ocp-alarm-threshold = <3300>;
 
 			//ti,bq2597x,bat-ucp-alarm-threshold = <2000>;
 
