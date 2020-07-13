@@ -130,7 +130,7 @@ short Read_RomID(unsigned char *RomID)
 		return ERROR_NO_DEVICE;
 	}
 
-	ds_dbg("Ready to write 0x33 to maxim IC!\n");
+	//ds_dbg("Ready to write 0x33 to maxim IC!\n");
 	write_byte(CMD_READ_ROM);
 	Delay_us(10);
 	for (i = 0; i < 8; i++)
@@ -353,6 +353,9 @@ void DS28E16_cmd_romid_pre(void)
 	write_buf[write_len++] = CMD_READ_STATUS;
 	for (i = 0; i < write_len; i++)
 		write_byte(write_buf[i]);
+
+	for (i = 0; i < 2; i++)
+		read_byte();
 
 	write_byte(CMD_RELEASE_BYTE);
 		Delay_us(1000*DELAY_DS28E16_EE_READ*tm);
@@ -823,19 +826,20 @@ unsigned char *Challenge, unsigned char *Secret_Seeds, unsigned char *S_Secret)
 	if (mi_auth_result == DS_TRUE)
 		return mi_auth_result;
 
-	if (anon != ANONYMOUS) {
+	//if (anon != ANONYMOUS) {
+
+		if (ds28el16_Read_RomID_retry(mi_romid) != DS_TRUE) {
+			ow_reset();
+			return ERROR_R_ROMID;
+		}
+
 		if (ds28el16_get_page_status_retry(status_chip) == DS_TRUE) {
 			MANID[0] = status_chip[4];
 		} else {
 			ow_reset();
 			return ERROR_R_STATUS;
 		}
-
-		if (ds28el16_Read_RomID_retry(mi_romid) != DS_TRUE) {
-			ow_reset();
-			return ERROR_R_ROMID;
-		}
-	}
+	//}
 
 	// DS28E16 calculate its session secret
 	flag = DS28E16_cmd_computeS_Secret_retry(anon,
@@ -1006,13 +1010,20 @@ unsigned char *Challenge, unsigned char *Secret_Seeds, unsigned char *S_Secret)
 static int ds28el16_Read_RomID_retry(unsigned char *RomID)
 {
 	int i;
+    static bool read_romid_ok = false;
 
 	ds_info("read rom id communication start ...\n");
-	for (i = 0; i < GET_ROM_ID_RETRY; i++) {
-		DS28E16_cmd_romid_pre();
-		if (Read_RomID(RomID) == DS_TRUE) {
-			ds_log("ds28el16_Read_RomID_retry success %d\n", i);
+	if(read_romid_ok){
+			ds_log("ds28el16_Read_RomID_retry success ...\n");
 			return DS_TRUE;
+	}else{
+		for (i = 0; i < GET_ROM_ID_RETRY; i++) {
+			DS28E16_cmd_romid_pre();
+			if (Read_RomID(RomID) == DS_TRUE) {
+				ds_log("ds28el16_Read_RomID_retry success %d\n", i);
+				read_romid_ok = true;
+				return DS_TRUE;
+			}
 		}
 	}
 	ds_log("ds28el16_Read_RomID_retry fail\n");

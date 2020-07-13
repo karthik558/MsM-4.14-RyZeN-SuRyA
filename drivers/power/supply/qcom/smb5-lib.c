@@ -2153,7 +2153,7 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	bool usb_online, dc_online;
 	u8 stat;
 	int batt_health;
-	int rc, suspend = 0;
+	int rc, suspend = 0, vbus_now = 0, batt_temp = 0;
 
 	if (chg->use_bq_pump && !chg->six_pin_step_charge_enable
 			&& (get_client_vote_locked(chg->usb_icl_votable,
@@ -2161,6 +2161,17 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 		val->intval = POWER_SUPPLY_STATUS_CHARGING;
 		return 0;
 	}
+
+	rc = smblib_get_prop_usb_voltage_now(chg, &pval);
+	if (rc < 0)
+		pr_err("Couldn't get usb voltage rc=%d\n", rc);
+	vbus_now = pval.intval;
+
+	rc = power_supply_get_property(chg->bms_psy,
+					POWER_SUPPLY_PROP_TEMP, &pval);
+	if (rc < 0)
+		pr_err("Couldn't get bms temp:%d\n", rc);
+	batt_temp = pval.intval;
 
 	if (chg->dbc_usbov) {
 		rc = smblib_get_prop_usb_present(chg, &pval);
@@ -2273,7 +2284,11 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 		 */
 		if (smblib_is_jeita_warm_charging(chg))
 			val->intval = POWER_SUPPLY_STATUS_CHARGING;
-		else
+		else if ((usb_online || vbus_now > 4000000) && (batt_temp > -100) && (batt_temp < 580) &&
+                     (POWER_SUPPLY_HEALTH_OVERHEAT != batt_health) && (POWER_SUPPLY_HEALTH_OVERVOLTAGE != batt_health)) {
+			val->intval = POWER_SUPPLY_STATUS_CHARGING;
+			pr_info("vbus_now is %d, report charging\n", vbus_now);
+		} else
 			val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
 		break;
 	default:
@@ -2296,8 +2311,8 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 		return 0;
 	}
 
-	if((POWER_SUPPLY_HEALTH_COOL == batt_health || POWER_SUPPLY_HEALTH_WARM == batt_health || POWER_SUPPLY_HEALTH_OVERHEAT == batt_health || POWER_SUPPLY_HEALTH_OVERVOLTAGE == batt_health)
-		&& val->intval == POWER_SUPPLY_STATUS_FULL){
+	if(POWER_SUPPLY_HEALTH_WARM == batt_health && (val->intval == POWER_SUPPLY_STATUS_FULL) &&
+		((batt_capa.intval <= 99) && usb_online) && (batt_temp > -100)  && (batt_temp < 580))  {
 		val->intval = POWER_SUPPLY_STATUS_CHARGING;
 		return 0;
 	}
@@ -2311,7 +2326,7 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 		return 0;
 	}
 
-	/*rc = smblib_read(chg, BATTERY_CHARGER_STATUS_5_REG, &stat);
+	rc = smblib_read(chg, BATTERY_CHARGER_STATUS_5_REG, &stat);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't read BATTERY_CHARGER_STATUS_2 rc=%d\n",
 				rc);
@@ -2321,8 +2336,18 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	stat &= ENABLE_TRICKLE_BIT | ENABLE_PRE_CHARGING_BIT |
 						ENABLE_FULLON_MODE_BIT;
 
-	if (!stat)
-		val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;*/
+    if (!stat){
+		if(POWER_SUPPLY_HEALTH_WARM == batt_health&& (val->intval == POWER_SUPPLY_STATUS_FULL)&&
+			((batt_capa.intval <= 99) && usb_online) && (batt_temp > -100)  && (batt_temp < 580)) {
+			val->intval = POWER_SUPPLY_STATUS_CHARGING;
+		}else if ((usb_online || vbus_now > 4000000) && (batt_temp > -100) && (batt_temp < 580) &&
+	                     (POWER_SUPPLY_HEALTH_OVERHEAT != batt_health) && (POWER_SUPPLY_HEALTH_OVERVOLTAGE != batt_health)) {
+			val->intval = POWER_SUPPLY_STATUS_CHARGING;
+			pr_info("vbus_now is %d, report charging\n", vbus_now);
+		} else {
+	             val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
+		}
+    }
 
 	return 0;
 }
