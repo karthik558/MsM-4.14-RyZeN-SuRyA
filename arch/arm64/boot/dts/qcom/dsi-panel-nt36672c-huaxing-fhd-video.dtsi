@@ -256,8 +256,8 @@
 				//coordinate
 				qcom,mdss-dsi-panel-xy-coordinate = <0x0F 0x18>;
 				qcom,mdss-dsi-dispparam-xy-coordinate-command = [
-					15 01 00 00 00 00 02 FF 20
-					06 01 00 01 05 00 02 A1 00
+					15 01 00 00 00 00 02 FF 10
+					06 01 00 01 00 00 01 A1
 				];
 				qcom,mdss-dsi-dispparam-xy-coordinate-command-state = "dsi_hs_mode";
 
