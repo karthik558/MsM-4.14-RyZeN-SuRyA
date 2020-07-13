@@ -5192,17 +5192,14 @@ static ssize_t dsi_display_get_whitepoint(struct device *dev,
 
 	ctrl = &display->ctrl[display->cmd_master_idx];
 
-	if (strnstr(g_lcd_id_mi, "huaxing", strlen(g_lcd_id_mi)) != NULL) {
-		rc = dsi_display_write_reg_page(ctrl, 0xFF, 0x20, buf, sizeof(buf));
-		rc = dsi_display_read_reg(ctrl, 0xA1, 0x00, buf, sizeof(buf));
-	} else {
-		rc = dsi_display_write_reg_page(ctrl, 0xFF, 0x10, buf, sizeof(buf));
-		rc = dsi_display_read_reg(ctrl, 0xA1, 0x00, buf, sizeof(buf));
-	}
+	rc = dsi_display_write_reg_page(ctrl, 0xFF, 0x10, buf, sizeof(buf));
+	rc = dsi_display_read_reg(ctrl, 0xA1, 0x00, buf, sizeof(buf));
+
 	if (rc <= 0) {
 		pr_err("get whitepoint failed rc=%d\n", rc);
 		goto exit;
 	}
+
 	if (buf[1] != 0)
 		rc = snprintf(buf, PAGE_SIZE, "x=%d,y=%d,lv=%d\n", buf[0], buf[1], buf[2]);
 	else
@@ -5213,7 +5210,7 @@ done:
 	return rc;
 }
 
-static DEVICE_ATTR(whitepoint, 0644, dsi_display_get_whitepoint, NULL);
+static DEVICE_ATTR(whitepoint, 0664, dsi_display_get_whitepoint, NULL);
 static struct kobject *msm_whitepoint;
 
 static int dsi_display_whitepoint_create_sysfs(void)
