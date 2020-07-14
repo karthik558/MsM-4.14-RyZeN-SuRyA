@@ -655,9 +655,10 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 		 * bq25970 alone compensate 100mA,  bq25970 master ans slave  compensate 300mA,
 		 * for target curr_ibus_limit for bq adc accurancy is below standard and power suuply system current
 		 */
-		curr_ibus_limit += pm_config.bus_curr_compensate;
+		//curr_ibus_limit += pm_config.bus_curr_compensate;
 		/* curr_ibus_limit should compare with apdo_max_curr here*/
 		curr_ibus_limit = min(curr_ibus_limit, pdpm->apdo_max_curr);
+		curr_ibus_limit += 200;
 		pr_debug("curr_ibus_limit:%d\n", curr_ibus_limit);
 	}
 
@@ -675,7 +676,7 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 					true, effective_fcc_taper * 1000);
 		}
 	} else if (pdpm->cp.vbat_volt < pm_config.bat_volt_lp_lmt - 250) {
-		ibus_limit = curr_ibus_limit + 100;
+		ibus_limit = curr_ibus_limit;
 		ibus_lmt_change_timer = 0;
 	} else {
 		ibus_lmt_change_timer = 0;
@@ -688,9 +689,9 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 		step_vbat = pm_config.fc2_steps;;
 
 	/* battery charge current loop*/
-	if (pdpm->cp.ibat_curr < curr_fcc_limit)
+	if (pdpm->cp.ibat_curr < (curr_fcc_limit - 90))
 		step_ibat = pm_config.fc2_steps;
-	else if (pdpm->cp.ibat_curr > curr_fcc_limit + 50)
+	else if (pdpm->cp.ibat_curr > (curr_fcc_limit))
 		step_ibat = -pm_config.fc2_steps;
 
 	/* bus current loop*/
@@ -788,7 +789,7 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 	pr_debug("steps: %d, sw_ctrl_steps:%d, hw_ctrl_steps:%d\n", steps, sw_ctrl_steps, hw_ctrl_steps);
 	pdpm->request_voltage += steps * STEP_MV;
 
-		pdpm->request_current = min(pdpm->apdo_max_curr, curr_ibus_limit);
+		//pdpm->request_current = min(pdpm->apdo_max_curr, curr_ibus_limit);
 
 	pr_info("steps:%d sw_ctrl_steps:%d step_vbat:%d step_ibat:%d step_ibus:%d\n",
 			steps, sw_ctrl_steps, step_vbat, step_ibat, step_ibus);
@@ -887,7 +888,7 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 
 	case PD_PM_STATE_FC2_ENTRY_1:
 		pdpm->request_voltage = pdpm->cp.vbat_volt * 2 + BUS_VOLT_INIT_UP;
-		pdpm->request_current = min(pdpm->apdo_max_curr, curr_ibus_lmt);
+		pdpm->request_current = pdpm->apdo_max_curr;
 
 		usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
 				pdpm->request_voltage * 1000, pdpm->request_current * 1000);
