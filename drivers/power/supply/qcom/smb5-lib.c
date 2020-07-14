@@ -9215,8 +9215,10 @@ void rerun_reverse_check(struct smb_charger *chg)
 	if(chg->reverse_charge_state != chg->reverse_charge_mode)
 		chg->reverse_charge_state = chg->reverse_charge_mode;
 
-	pr_err("longcheer:%s,reverse_charge_mode=%d,typec_mode=%d\n",__func__,
-		chg->reverse_charge_mode,chg->typec_mode);
+	pr_err("longcheer:%s,reverse_charge_mode=%d,typec_mode=%d,real_charger_type=%d\n",__func__,
+		chg->reverse_charge_mode,chg->typec_mode,chg->real_charger_type);
+	if(chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD)
+		return;
 	lct_vbus_enable(chg, false);
 
 	rc = smblib_set_charge_param(chg, &chg->param.otg_cl, chg->otg_chg_current);
