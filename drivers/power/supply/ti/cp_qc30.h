@@ -73,6 +73,10 @@ enum hvdcp3_type {
 	HVDCP3P5,
 };
 
+#define MAIN_CHG_VOTER                  "MAIN_CHG_VOTER"
+#define QC3_MAIN_CHARGER_ICL            2000000
+#define QC3_CHARGER_ICL                 500000
+
 #define QC3P5_BQ_TAPER_FCC_VOTER       "QC3P5_BQ_TAPER_FCC_VOTER"
 #define QC3P5_BQ_TAPER_HYS_MV                  30
 #define QC3P5_BQ_TAPER_DECREASE_STEP_MA                        200
@@ -202,6 +206,7 @@ typedef struct {
 	struct bq2597x			bq2597x;
 	struct sw_charger			sw_chager;
 	struct votable		*fcc_votable;
+	struct votable		*usb_icl_votable;
 
 	struct power_supply *fc_psy;
 	struct power_supply *sw_psy;
