@@ -73,6 +73,7 @@
 				qcom,mdss-dsi-v-bottom-border = <0>;
 
 				qcom,mdss-dsi-on-command = [
+					//give by huaxing, use for panel on cmd begin
 					15 01 00 00 00 00 02 FF 10
 					15 01 00 00 00 00 02 FB 01
 					15 01 00 00 00 00 02 B0 00
@@ -91,36 +92,17 @@
 					15 01 00 00 00 00 02 FB 01
 					15 01 00 00 00 00 02 9C 11
 					15 01 00 00 00 00 02 9D 11
+					//give by huaxing, use for panel on cmd end
 
+					//PWN ON
 					15 01 00 00 00 00 02 FF 10
+					15 01 00 00 00 00 02 FB 01
 					15 01 00 00 00 00 02 51 B8
-					15 01 00 00 00 00 02 53 2C
+					15 01 00 00 00 00 02 53 24
 					15 01 00 00 00 00 02 55 00
 
-					15 01 00 00 00 00 02 FF 27
-					15 01 00 00 00 00 02 FB 01
-					15 01 00 00 00 00 02 40 25
-
-					15 01 00 00 00 00 02 FF 10
-					15 01 00 00 00 00 02 FB 01
-					05 01 00 00 46 00 02 11 00
-					05 01 00 00 28 00 02 29 00
-
-					15 01 00 00 00 00 02 FF 27
-					15 01 00 00 00 00 02 FB 01
-					15 01 00 00 00 00 02 3F 01
-					15 01 00 00 00 00 02 43 00
-
-					15 01 00 00 00 00 02 FF 10
-				];
-				qcom,mdss-dsi-off-command = [
-					15 01 00 00 00 00 02 FF 10
-					15 01 00 00 00 00 02 FB 01
-					05 01 00 00 10 00 02 28 00
-					05 01 00 00 3C 00 02 10 00
-				];
-
-				qcom,mdss-dsi-dispparam-cabcuion-command = [
+					//give by nova, use for cabc begin
+					//1080*2400
 					15 01 00 00 00 00 02 FF 23
 					15 01 00 00 00 00 02 FB 01
 					15 01 00 00 00 00 02 10 82
@@ -129,6 +111,7 @@
 					15 01 00 00 00 00 02 15 68
 					15 01 00 00 00 00 02 16 0B
 
+					//UI_PWM DUTY
 					15 01 00 00 00 00 02 30 FF
 					15 01 00 00 00 00 02 31 FD
 					15 01 00 00 00 00 02 32 FB
@@ -145,16 +128,26 @@
 					15 01 00 00 00 00 02 3F E8
 					15 01 00 00 00 00 02 40 E6
 					15 01 00 00 00 00 02 41 E5
-				];
-				qcom,mdss-dsi-dispparam-cabcmovieon-command = [
-					15 01 00 00 00 00 02 FF 23
-					15 01 00 00 00 00 02 FB 01
-					15 01 00 00 00 00 02 10 82
-					15 01 00 00 00 00 02 11 01
-					15 01 00 00 00 00 02 12 95
-					15 01 00 00 00 00 02 15 68
-					15 01 00 00 00 00 02 16 0B
 
+					//Still_PWM DUTY
+					15 01 00 00 00 00 02 45 FF
+					15 01 00 00 00 00 02 46 F3
+					15 01 00 00 00 00 02 47 E8
+					15 01 00 00 00 00 02 48 DD
+					15 01 00 00 00 00 02 49 D3
+					15 01 00 00 00 00 02 4A C9
+					15 01 00 00 00 00 02 4B BE
+					15 01 00 00 00 00 02 4C B3
+					15 01 00 00 00 00 02 4D A9
+					15 01 00 00 00 00 02 4E 9F
+					15 01 00 00 00 00 02 4F 95
+					15 01 00 00 00 00 02 50 8B
+					15 01 00 00 00 00 02 51 81
+					15 01 00 00 00 00 02 52 77
+					15 01 00 00 00 00 02 53 6D
+					15 01 00 00 00 00 02 54 65
+
+					//MOV_PWM DUTY
 					15 01 00 00 00 00 02 58 FF
 					15 01 00 00 00 00 02 59 F8
 					15 01 00 00 00 00 02 5A F3
@@ -172,46 +165,70 @@
 					15 01 00 00 00 00 02 66 B6
 					15 01 00 00 00 00 02 67 B1
 					15 01 00 00 00 00 02 A0 11
+					//give by nova, use for cabc end
+
+					//give by nova, use for esd check begin
+					15 01 00 00 00 00 02 FF 27
+					15 01 00 00 00 00 02 FB 01
+					15 01 00 00 00 00 02 40 25
+					//give by nova, use for esd check end
+
+					15 01 00 00 00 00 02 FF 10
+					15 01 00 00 00 00 02 FB 01
+					05 01 00 00 46 00 02 11 00
+					05 01 00 00 28 00 02 29 00
+
+					//give by nova, use for esd check begin
+					15 01 00 00 00 00 02 FF 27
+					15 01 00 00 00 00 02 FB 01
+					15 01 00 00 00 00 02 3F 01
+					15 01 00 00 00 00 02 43 00
+					//give by nova, use for esd check end
+				];
+				qcom,mdss-dsi-off-command = [
+					15 01 00 00 00 00 02 FF 10
+					15 01 00 00 00 00 02 FB 01
+					05 01 00 00 10 00 02 28 00
+					05 01 00 00 3C 00 02 10 00
+				];
+
+				qcom,mdss-dsi-dispparam-cabcuion-command = [
+					15 01 00 00 00 00 02 FF 10
+					15 01 00 00 00 00 02 FB 01
+					15 01 00 00 00 00 02 53 2C
+					15 01 00 00 14 00 02 55 01
+				];
+				qcom,mdss-dsi-dispparam-cabcmovieon-command = [
+					15 01 00 00 00 00 02 FF 10
+					15 01 00 00 00 00 02 FB 01
+					15 01 00 00 00 00 02 53 2C
+					15 01 00 00 14 00 02 55 03
 				];
 				qcom,mdss-dsi-dispparam-cabcstillon-command = [
-					15 01 00 00 00 00 02 FF 23
+					15 01 00 00 00 00 02 FF 10
 					15 01 00 00 00 00 02 FB 01
-					15 01 00 00 00 00 02 10 82
-					15 01 00 00 00 00 02 11 01
-					15 01 00 00 00 00 02 12 95
-					15 01 00 00 00 00 02 15 68
-					15 01 00 00 00 00 02 16 0B
-
-					15 01 00 00 00 00 02 45 FF
-					15 01 00 00 00 00 02 46 F3
-					15 01 00 00 00 00 02 47 E8
-					15 01 00 00 00 00 02 48 DD
-					15 01 00 00 00 00 02 49 D3
-					15 01 00 00 00 00 02 4A C9
-					15 01 00 00 00 00 02 4B BE
-					15 01 00 00 00 00 02 4C B3
-					15 01 00 00 00 00 02 4D A9
-					15 01 00 00 00 00 02 4E 9F
-					15 01 00 00 00 00 02 4F 95
-					15 01 00 00 00 00 02 50 8B
-					15 01 00 00 00 00 02 51 81
-					15 01 00 00 00 00 02 52 77
-					15 01 00 00 00 00 02 53 6D
-					15 01 00 00 00 00 02 54 65
+					15 01 00 00 00 00 02 53 2C
+					15 01 00 00 14 00 02 55 02
 				];
 				qcom,mdss-dsi-dispparam-cabcoff-command = [
 					15 01 00 00 00 00 02 FF 10
 					15 01 00 00 00 00 02 FB 01
-					15 01 00 00 00 00 02 53 2C
-					15 01 00 00 00 00 02 55 00
+					15 01 00 00 00 00 02 53 24
+					15 01 00 00 14 00 02 55 00
 				];
 				qcom,mdss-dsi-dispparam-lcd-hbm-l1-on-command = [
+					15 01 00 00 00 00 02 FF 10
+					15 01 00 00 00 00 02 FB 01
 					15 01 00 00 00 00 02 51 E6
 				];
 				qcom,mdss-dsi-dispparam-lcd-hbm-l2-on-command = [
+					15 01 00 00 00 00 02 FF 10
+					15 01 00 00 00 00 02 FB 01
 					15 01 00 00 00 00 02 51 FF
 				];
 				qcom,mdss-dsi-dispparam-lcd-hbm-off-command = [
+					15 01 00 00 00 00 02 FF 10
+					15 01 00 00 00 00 02 FB 01
 					15 01 00 00 00 00 02 51 B8
 				];
 				qcom,mdss-dsi-dispparam-hbm-on-command = [
@@ -230,10 +247,10 @@
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
-				qcom,mdss-dsi-dispparam-cabcuion-command-state = "dsi_hs_mode";
-				qcom,mdss-dsi-dispparam-cabcstillon-command-state = "dsi_hs_mode";
-				qcom,mdss-dsi-dispparam-cabcmovieon-command-state = "dsi_hs_mode";
-				qcom,mdss-dsi-dispparam-cabcoff-command-state = "dsi_hs_mode";
+				qcom,mdss-dsi-dispparam-cabcuion-command-state = "dsi_lp_mode";
+				qcom,mdss-dsi-dispparam-cabcstillon-command-state = "dsi_lp_mode";
+				qcom,mdss-dsi-dispparam-cabcmovieon-command-state = "dsi_lp_mode";
+				qcom,mdss-dsi-dispparam-cabcoff-command-state = "dsi_lp_mode";
 
 				qcom,mdss-dsi-dispparam-lcd-hbm-l1-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-dispparam-lcd-hbm-l2-on-command-state = "dsi_lp_mode";
@@ -248,9 +265,9 @@
 
 
 				//delay dimming on
-				qcom,mdss-dsi-dispparam-dimmingon-command = [39 01 00 00 01 00 02 53 2C];
+				qcom,mdss-dsi-dispparam-dimmingon-command = [15 01 00 00 01 00 02 53 2C];
 				qcom,mdss-dsi-dispparam-dimmingon-command-state = "dsi_lp_mode";
-				qcom,mdss-dsi-dispparam-dimmingoff-command = [39 01 00 00 01 00 02 53 24];
+				qcom,mdss-dsi-dispparam-dimmingoff-command = [15 01 00 00 01 00 02 53 24];
 				qcom,mdss-dsi-dispparam-dimmingoff-command-state = "dsi_lp_mode";
 
 				//coordinate
