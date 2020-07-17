@@ -741,25 +741,27 @@ static int handle_jeita(struct step_chg_info *chip)
 		return rc;
 	}
 	if (pval.intval) {
-		if (batt_soc < 95) {
-			rc = power_supply_get_property(chip->batt_psy,
+		//Remove this restriction according to the standard
+		//provided by Xiaomi hardware in 2020.07.17
+		//if (batt_soc < 95) {
+		rc = power_supply_get_property(chip->batt_psy,
+				POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
+		chg_term_current = pval.intval;
+		if ((chg_term_current == FFC_LOW_TEMP_CHG_TERM_CURRENT)
+			&& (batt_temp > FFC_CHG_TERM_TEMP_THRESHOLD + 10)) {
+				chg_term_current = FFC_HIGH_TEMP_CHG_TERM_CURRENT;
+				pval.intval = chg_term_current;
+				rc = power_supply_set_property(chip->batt_psy,
 					POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
-			chg_term_current = pval.intval;
-			if ((chg_term_current == FFC_LOW_TEMP_CHG_TERM_CURRENT)
-				&& (batt_temp > FFC_CHG_TERM_TEMP_THRESHOLD + 10)) {
-					chg_term_current = FFC_HIGH_TEMP_CHG_TERM_CURRENT;
-					pval.intval = chg_term_current;
-					rc = power_supply_set_property(chip->batt_psy,
+		} else if ((chg_term_current == FFC_HIGH_TEMP_CHG_TERM_CURRENT)
+			&& (batt_temp < FFC_CHG_TERM_TEMP_THRESHOLD - 10)) {
+				chg_term_current = FFC_LOW_TEMP_CHG_TERM_CURRENT;
+				pval.intval = chg_term_current;
+				rc = power_supply_set_property(chip->batt_psy,
 						POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
-			} else if ((chg_term_current == FFC_HIGH_TEMP_CHG_TERM_CURRENT)
-				&& (batt_temp < FFC_CHG_TERM_TEMP_THRESHOLD - 10)) {
-					chg_term_current = FFC_LOW_TEMP_CHG_TERM_CURRENT;
-					pval.intval = chg_term_current;
-					rc = power_supply_set_property(chip->batt_psy,
-							POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
-			}
-			pr_info("batt_temp = %d, ffc_chg_term_current=%d\n", batt_temp, chg_term_current);
 		}
+		pr_info("batt_temp = %d, ffc_chg_term_current=%d\n", batt_temp, chg_term_current);
+		//}
 	}
 
 	chip->fv_votable = find_votable("FV");
