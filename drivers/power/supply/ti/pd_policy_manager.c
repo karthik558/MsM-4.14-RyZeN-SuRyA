@@ -893,7 +893,10 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 		break;
 
 	case PD_PM_STATE_FC2_ENTRY_1:
-		pdpm->request_voltage = pdpm->cp.vbat_volt * 2 + BUS_VOLT_INIT_UP;
+		if (retry_count >= 1)
+			pdpm->request_voltage += STEP_MV;
+		else
+			pdpm->request_voltage = pdpm->cp.vbat_volt * 2 + BUS_VOLT_INIT_UP;
 		pdpm->request_current = pdpm->apdo_max_curr;
 
 		usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
@@ -907,8 +910,8 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 		break;
 
 	case PD_PM_STATE_FC2_ENTRY_2:
-		pr_info("tune adapter volt %d , vbatt %d\n",
-					pdpm->cp.vbus_volt, pdpm->cp.vbat_volt);
+		pr_info("tune adapter volt %d , vbatt %d tune_vbus_retry=%d\n",
+					pdpm->cp.vbus_volt, pdpm->cp.vbat_volt, tune_vbus_retry);
 		if (pdpm->cp.vbus_volt < (pdpm->cp.vbat_volt * 2 + BUS_VOLT_INIT_UP - 50)) {
 			tune_vbus_retry++;
 			pdpm->request_voltage += STEP_MV;
@@ -931,7 +934,7 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 			break;
 		}
 
-		if (tune_vbus_retry > 20) {
+		if (tune_vbus_retry > 25) {
 			if (retry_count < 1) {
 				usbpd_pm_move_state(pdpm, PD_PM_STATE_FC2_ENTRY_1);
 				retry_count++;
