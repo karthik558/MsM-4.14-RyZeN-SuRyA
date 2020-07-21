@@ -960,6 +960,7 @@ void cp_statemachine(unsigned int port)
 		if (tune_vbus_retry > 23) {
 			pr_err("Failed to tune adapter volt into valid range, charge with switching charger\n");
 			pm_state.sw_fc2_init_fail = true;
+			recovery = true;
 			cp_move_state(CP_STATE_SW_ENTRY);
 		}
 		break;
