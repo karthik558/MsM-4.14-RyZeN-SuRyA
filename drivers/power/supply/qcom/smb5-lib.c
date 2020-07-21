@@ -9300,11 +9300,14 @@ static void smblib_charger_type_recheck(struct work_struct *work)
 	chg->recheck_charger = true;
 
 	/* need request hsusb phy dpdm to false then true for float charger */
-	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_FLOAT) {
+	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_FLOAT
+		|| chg->real_charger_type == POWER_SUPPLY_TYPE_USB
+		|| chg->real_charger_type == POWER_SUPPLY_TYPE_USB_DCP) {
 		rc = smblib_request_dpdm(chg, false);
 		if (rc < 0)
 			smblib_err(chg, "Couldn't disable DPDM rc=%d\n", rc);
-		chg->is_float_recheck = true;
+		if ( chg->real_charger_type == POWER_SUPPLY_TYPE_USB_FLOAT)
+			chg->is_float_recheck = true;
 		msleep(500);
 	}
 
