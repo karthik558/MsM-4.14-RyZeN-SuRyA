@@ -24,7 +24,7 @@
 	qcom,qg-batt-profile-ver = <100>;
 	mi,six-pin-battery;
 
-	qcom,jeita-fcc-ranges = <(-100)  0   500000
+	qcom,jeita-fcc-ranges = <(-100)  0   450000
                                 1  50   950000
 				51  100  2500000
 				101 150  4000000
