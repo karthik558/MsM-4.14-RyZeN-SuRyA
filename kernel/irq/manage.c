@@ -1291,6 +1291,7 @@ __setup_irq(unsigned int irq, struct irq_desc *desc, struct irqaction *new)
 	if (!try_module_get(desc->owner))
 		return -ENODEV;
 
+	new->flags &= ~IRQF_PERF_CRITICAL;
 	new->irq = irq;
 
 	/*

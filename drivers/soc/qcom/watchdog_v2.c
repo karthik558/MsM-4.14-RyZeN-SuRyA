@@ -915,6 +915,7 @@ static int msm_watchdog_probe(struct platform_device *pdev)
 	if (msm_minidump_add_region(&md_entry))
 		pr_info("Failed to add Watchdog data in Minidump\n");
 
+	wdog_disable(wdog_dd);
 	return 0;
 err:
 	kzfree(wdog_dd);
