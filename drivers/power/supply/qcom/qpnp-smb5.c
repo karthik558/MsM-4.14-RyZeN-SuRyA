@@ -555,6 +555,12 @@ static int smb5_parse_dt(struct smb5 *chip)
 		chg->otg_cl_ua =
 			(chip->chg.chg_param.smb_version == PMI632_SUBTYPE)
 						? MICRO_1PA : MICRO_2PA;
+
+	#ifdef CONFIG_REVERSE_CHARGE
+	if (strnstr(saved_command_line, "androidboot.hwc=INT", strlen(saved_command_line)) != NULL)
+		chg->otg_cl_ua = MICRO_1PA;
+	#endif
+
 	rc = of_property_read_u32(node, "qcom,chg-term-src",
 			&chip->dt.term_current_src);
 	if (rc < 0)

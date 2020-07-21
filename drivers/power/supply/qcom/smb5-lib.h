@@ -1024,6 +1024,7 @@ int smblib_set_prop_battery_charging_enabled(struct smb_charger *chg,
                 const union power_supply_propval *val);
 #ifdef CONFIG_REVERSE_CHARGE
 void rerun_reverse_check(struct smb_charger *chg);
+extern char *saved_command_line;
 #endif
 int smblib_get_prop_batt_awake(struct smb_charger *chg,
 				union power_supply_propval *val);
