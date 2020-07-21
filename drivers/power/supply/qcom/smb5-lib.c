@@ -2242,7 +2242,11 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 			val->intval = POWER_SUPPLY_STATUS_FULL;
 			break;
 		default:
-			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
+			pr_err("[%s] usb online=%d real_charger_type=%d\n", __func__, usb_online, chg->real_charger_type);
+			if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD)
+				val->intval = POWER_SUPPLY_STATUS_CHARGING;
+			else
+				val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
 			break;
 		}
 		return rc;
