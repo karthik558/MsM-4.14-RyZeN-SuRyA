@@ -16,6 +16,7 @@
 
 
 #define WL2866D_ID  0x64
+#define WL2866D_ID1  0x55
 #define AW_I2C_RETRIES 2
 #define AW_I2C_RETRY_DELAY 2
 //#ifdef __XIAOMI_CAMERA__
@@ -473,7 +474,7 @@ static int wl2866d_get_id(struct  wl2866d_chip *chip)
 	wl2866d_i2c_read(chip, wl2866d_on_config[OUT_DVDD1].reg, &reg_val);
 	pr_err("%s:wl2866d id is %d\n", __func__, reg_val);
 
-	if (reg_val != WL2866D_ID) {
+	if ((reg_val != WL2866D_ID) && (reg_val != WL2866D_ID1)) {
 		ret = -1;
 		return ret;
 	}
