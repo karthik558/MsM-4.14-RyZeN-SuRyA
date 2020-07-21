@@ -106,7 +106,7 @@ int cam_smmu_ops(int handle, enum cam_smmu_ops_param op);
  *
  * @param handle: Handle to identify the CAM SMMU client (VFE, CPP, FD etc.)
  * @param ion_fd: ION handle identifying the memory buffer.
- * @dir         : Mapping direction: which will traslate to DMA_BIDIRECTIONAL,
+ * @dir         : Mapping direction: which will traslate toDMA_BIDIRECTIONAL,
  *                DMA_TO_DEVICE or DMA_FROM_DEVICE
  * @dma_addr    : Pointer to physical address where mapped address will be
  *                returned if region_id is CAM_SMMU_REGION_IO. If region_id is
