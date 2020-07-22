@@ -934,7 +934,7 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 			break;
 		}
 
-		if (tune_vbus_retry > 25) {
+		if (tune_vbus_retry > 30) {
 			if (retry_count < 1) {
 				usbpd_pm_move_state(pdpm, PD_PM_STATE_FC2_ENTRY_1);
 				retry_count++;

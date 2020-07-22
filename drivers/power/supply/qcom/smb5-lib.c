@@ -3937,6 +3937,8 @@ int smblib_get_prop_usb_online(struct smb_charger *chg,
 {
 	int rc = 0;
 	u8 stat;
+	int usb_present = 0;
+	union power_supply_propval pval = {0, };
 
 	if (get_client_vote_locked(chg->usb_icl_votable, USER_VOTER) == 0) {
 		val->intval = false;
@@ -3948,6 +3950,23 @@ int smblib_get_prop_usb_online(struct smb_charger *chg,
 				MAIN_CHG_SUSPEND_VOTER) == 0)) {
 		val->intval = true;
 		return rc;
+	}
+
+	if (chg->use_bq_pump) {
+		rc = smblib_get_prop_usb_present(chg, &pval);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't get usb present rc = %d\n", rc);
+			return rc;
+		}
+
+		usb_present = pval.intval;
+
+		if (usb_present && chg->use_bq_pump
+					&& (get_client_vote_locked(chg->usb_icl_votable,
+							MAIN_ICL_MIN_VOTER) == MAIN_ICL_MIN)) {
+			val->intval = true;
+			return rc;
+		}
 	}
 
 	if (is_client_vote_enabled_locked(chg->usb_icl_votable,
