@@ -75,6 +75,8 @@ enum pm_state {
 /* jeita related */
 #define JEITA_WARM_THR			580
 #define JEITA_COOL_NOT_ALLOW_CP_THR			50
+#define COOL_HYS_THRESHOLDS			180
+#define WARM_HYS_THRESHOLDS			450
 #define PDO_MAX_NUM			7
 /*
  * add hysteresis for warm threshold to avoid flash
@@ -210,6 +212,7 @@ struct usbpd_pm {
 	/* jeita or thermal related */
 	bool			jeita_triggered;
 	bool			is_temp_out_fc2_range;
+	bool			bq_cool_warm_done;
 };
 
 struct pdpm_config {

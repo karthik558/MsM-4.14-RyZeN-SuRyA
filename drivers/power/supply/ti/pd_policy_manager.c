@@ -173,6 +173,18 @@ static bool pd_disable_cp_by_jeita_status(struct usbpd_pm *pdpm)
 			pr_err("jeita lower limit reached, batt_temp:%d\n", batt_temp);
 			pdpm->jeita_triggered = true;
 			return true;
+		} else if (pdpm->bq_cool_warm_done) {
+			if (((pdpm->cp.vbat_volt < (pm_config.bat_volt_lp_lmt - 100)) && (batt_temp <= COOL_HYS_THRESHOLDS)) ||
+			((pdpm->cp.vbat_volt < (BATT_WARM_CHG_VOLT - 100)) && (batt_temp >= WARM_HYS_THRESHOLDS)) ||
+			((batt_temp < WARM_HYS_THRESHOLDS) && (batt_temp > COOL_HYS_THRESHOLDS))) {
+				pr_err("after cool and warm state recharge, batt_temp:%d,vbat_volt=%d,bat_volt_lp_lmt=%d,bq_cool_warm_done=%d\n",
+                                          batt_temp,pdpm->cp.vbat_volt,pm_config.bat_volt_lp_lmt,pdpm->bq_cool_warm_done);
+				pdpm->bq_cool_warm_done = false;
+				return false;
+			} else {
+				return true;
+			}
+
 		} else if ((batt_temp <= (JEITA_WARM_THR - JEITA_HYSTERESIS))
 				&& (batt_temp >= (JEITA_COOL_NOT_ALLOW_CP_THR + JEITA_HYSTERESIS))
 				&& pdpm->jeita_triggered) {
@@ -203,7 +215,7 @@ static bool is_cool_charge(struct usbpd_pm *pdpm)
 	batt_temp = pval.intval;
 
 	pr_debug("batt_temp: %d\n", batt_temp);
-	if (batt_temp < 150)
+	if (batt_temp < (COOL_HYS_THRESHOLDS - 30))
 		return true;
 	return false;
 }
@@ -226,7 +238,7 @@ static bool is_warm_charge(struct usbpd_pm *pdpm)
 	batt_temp = pval.intval;
 
 	pr_debug("batt_temp: %d\n", batt_temp);
-	if (batt_temp > 480)
+	if (batt_temp > (WARM_HYS_THRESHOLDS + 30))
 		return true;
 	return false;
 }
@@ -764,7 +776,8 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 		if (cool_warm_overcharge_timer++ > TAPER_TIMEOUT) {
 			pr_info("cool warm overcharge\n");
 			cool_warm_overcharge_timer = 0;
-			return PM_ALGO_RET_TAPER_DONE;
+			pdpm->bq_cool_warm_done = true;
+			return PM_ALGO_RET_CHG_DISABLED;
 			}
 	} else {
 		cool_warm_overcharge_timer = 0;
@@ -1089,7 +1102,7 @@ static void usbpd_pm_disconnect(struct usbpd_pm *pdpm)
 	if (pdpm->fcc_votable)
 		vote(pdpm->fcc_votable, BQ_TAPER_FCC_VOTER,
 				false, 0);
-	
+
 	if(!pdpm->sw.charge_enabled)
 	{
 		usbpd_pm_enable_sw(pdpm, true);
@@ -1098,6 +1111,7 @@ static void usbpd_pm_disconnect(struct usbpd_pm *pdpm)
 	pdpm->pps_supported = false;
 	pdpm->jeita_triggered = false;
 	pdpm->is_temp_out_fc2_range = false;
+	pdpm->bq_cool_warm_done = false;
 	pdpm->apdo_selected_pdo = 0;
 	memset(&pdpm->pdo, 0, sizeof(pdpm->pdo));
 	pm_config.bat_curr_lp_lmt = pdpm->bat_curr_max;
