@@ -42,7 +42,7 @@ module_param_named(
 	fvss_soc_interval_ms, qg_fvss_delta_soc_interval_ms, int, 0600
 );
 
-static int qg_delta_soc_cold_interval_ms = 4000;
+static int qg_delta_soc_cold_interval_ms = 60000;
 module_param_named(
 	soc_cold_interval_ms, qg_delta_soc_cold_interval_ms, int, 0600
 );
