@@ -2557,6 +2557,7 @@ int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 {
 	int rc;
 	u8 stat;
+	union power_supply_propval batt_capa ={0,};
 
 	rc = smblib_read(chg, BATTERY_CHARGER_STATUS_1_REG, &stat);
 	if (rc < 0) {
@@ -2568,12 +2569,20 @@ int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 	stat = stat & BATTERY_CHARGER_STATUS_MASK;
 	val->intval = (stat == TERMINATE_CHARGE);
 
+	rc = smblib_get_prop_from_bms(chg,
+			POWER_SUPPLY_PROP_CAPACITY, &batt_capa);
+	if (rc < 0)
+		smblib_err(chg, "Couldn't read SOC value, rc=%d\n", rc);
+
 	/*  if charge is done, clear CHG_AWAKE_VOTER */
 	if (val->intval == 1) {
 		/*disable FFC when charge done*/
 		if (chg->support_ffc) {
-			if (smblib_get_fastcharge_mode(chg) == 1)
+			smblib_dbg(chg, PR_OEM, "[%s] enter to set fastcharge mode, cap=%d\n", __func__, batt_capa.intval);
+			if ((smblib_get_fastcharge_mode(chg) == 1) && (batt_capa.intval > 90)) {
 				rc = smblib_set_fastcharge_mode(chg, false);
+				smblib_dbg(chg, PR_OEM, "[%s] set_fastcharge_mode to false!\n", __func__);
+			}
 		}
 		vote(chg->awake_votable, CHG_AWAKE_VOTER, false, 0);
 	}
