@@ -23,6 +23,8 @@
 extern int wl2866d_camera_power_up(uint16_t camera_id);
 extern int wl2866d_camera_power_down(uint16_t camera_id);
 extern int wl2866d_camera_power_down_all(void);
+extern int wl2866d_camera_power_up_all(void);
+
 extern char *saved_command_line;
 static int is_camera_probed = 0;
 //[bit5 bit4 bit3 bit2 bit1 bit0]
@@ -928,6 +930,16 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			goto free_power_settings;
 		}
 
+        //#ifdef __XIAOMI_CAMERA__
+        pr_err("xyz camera probe p_camera_id=[%d]\n", sensordata->camera_id);
+        rc = wl2866d_camera_power_up_all();
+        if (rc < 0) {
+            CAM_ERR(CAM_SENSOR, "xyz wl2866d_camera_power_up_all failed %s %d, rc=%d",
+               __func__, __LINE__, rc);
+            goto free_power_settings;
+        }
+        //#endif
+
 		/* Power up and probe sensor */
 		rc = cam_sensor_power_up(s_ctrl);
 		if (rc < 0) {
@@ -1044,11 +1056,12 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			goto release_mutex;
 		}
 //#ifdef __XIAOMI_CAMERA__
-		pr_err("xyz p_camera_id=[%d]\n", sensordata->camera_id);
+		pr_err("xyz camera power up p_camera_id=[%d]\n", sensordata->camera_id);
 		rc = wl2866d_camera_power_up(sensordata->camera_id);
 		if (rc < 0) {
-			CAM_ERR(CAM_SENSOR, "xyz wl2866d_camera_power_up failed, rc=%d", rc);
-			return rc;
+			CAM_ERR(CAM_SENSOR, "xyz wl2866d_camera_power_up failed %s %d, rc=%d",
+               __func__, __LINE__, rc);
+			goto release_mutex;
 		}
 //#endif
 		rc = cam_sensor_power_up(s_ctrl);

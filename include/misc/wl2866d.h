@@ -27,7 +27,10 @@
 //#ifdef __XIAOMI_CAMERA__
 int wl2866d_camera_power_up(uint16_t camera_id);
 int wl2866d_camera_power_down(uint16_t camera_id);
+int wl2866d_camera_power_up_eeprom(void);
+int wl2866d_camera_power_down_eeprom(void);
 int wl2866d_camera_power_down_all(void);
+int wl2866d_camera_power_up_all(void);
 //#endif
 struct wl2866d_chip {
 	struct device *dev;

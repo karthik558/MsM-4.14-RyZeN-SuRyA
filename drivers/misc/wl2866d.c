@@ -496,6 +496,30 @@ static int set_init_voltage(struct wl2866d_chip *chip)
 	return 0;
 }
 
+int wl2866d_camera_power_up_eeprom(void)
+{
+    int ret = -1;
+    ret = set_init_voltage(camera_chip);
+    return ret;
+}
+EXPORT_SYMBOL(wl2866d_camera_power_up_eeprom);
+
+int wl2866d_camera_power_up_all(void)
+{
+    int ret = -1;
+    ret = set_init_voltage(camera_chip);
+    return ret;
+}
+EXPORT_SYMBOL(wl2866d_camera_power_up_all);
+
+int wl2866d_camera_power_down_eeprom(void)
+{
+    int ret = -1;
+    ret = wl2866d_i2c_write(camera_chip, wl2866d_on_config[VOL_ENABLE].reg, 0);//bit1
+    return ret;
+}
+EXPORT_SYMBOL(wl2866d_camera_power_down_eeprom);
+
 void wl2866d_print_reg(struct  wl2866d_chip *chip)
 {
 	int i;
