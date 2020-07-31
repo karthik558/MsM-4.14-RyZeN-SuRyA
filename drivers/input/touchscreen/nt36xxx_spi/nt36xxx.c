@@ -1810,10 +1810,11 @@ int lct_nvt_tp_palm_callback(bool en)
 				close_pocket_fail = 1;
 			}
 		}
-		goto exit;
+		return ret;
 	}
 	NVT_LOG("init write_buf[8] = {0}");
 	NVT_LOG("en=%d", en);
+	mutex_lock(&ts->lock);
 	msleep(35);
 
 	//---set xdata index to EVENT BUF ADDR---
@@ -1829,7 +1830,7 @@ int lct_nvt_tp_palm_callback(bool en)
 		NVT_LOG("screen is not locked");
 	} else {
 		NVT_LOG("screen is locked");
-		buf[1] = buf[1]-1;
+		buf[1] = 0x73;
 	}
 	ret = CTP_SPI_WRITE(ts->client, buf, 3);
 	if (ret < 0) {
@@ -1845,7 +1846,8 @@ int lct_nvt_tp_palm_callback(bool en)
 	NVT_LOG("%s PALM", en ? "Disable" : "Enable");
 
 exit:
-	return 0;
+	mutex_unlock(&ts->lock);
+	return ret;
 
 }
 #endif
