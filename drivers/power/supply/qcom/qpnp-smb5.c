@@ -557,7 +557,8 @@ static int smb5_parse_dt(struct smb5 *chip)
 						? MICRO_1PA : MICRO_2PA;
 
 	#ifdef CONFIG_REVERSE_CHARGE
-	if (strnstr(saved_command_line, "androidboot.hwc=INT", strlen(saved_command_line)) != NULL)
+	if ((strnstr(saved_command_line, "androidboot.hwc=INT", strlen(saved_command_line)) != NULL)
+		|| (strnstr(saved_command_line, "androidboot.hwc=THAI", strlen(saved_command_line)) != NULL))
 		chg->otg_cl_ua = MICRO_1PA;
 	#endif
 
