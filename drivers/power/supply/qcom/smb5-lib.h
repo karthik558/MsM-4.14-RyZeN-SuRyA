@@ -1018,7 +1018,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable);
 int smblib_get_fastcharge_mode(struct smb_charger *chg);
 int smb5_config_iterm(struct smb_charger *chg, int hi_thresh, int low_thresh);
 int smblib_deinit(struct smb_charger *chg);
-int smblib_get_prop_battery_charging_enabled(struct smb_charger *chg,
+int smblib_get_prop_charging_enabled(struct smb_charger *chg,
                 union power_supply_propval *val);
 int smblib_set_prop_battery_charging_enabled(struct smb_charger *chg,
                 const union power_supply_propval *val);

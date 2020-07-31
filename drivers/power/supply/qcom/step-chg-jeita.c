@@ -78,6 +78,7 @@ struct step_chg_info {
 	struct power_supply	*dc_psy;
 	struct delayed_work	status_change_work;
 	struct delayed_work	get_config_work;
+	struct delayed_work	ffc_chg_term_current_work;
 	struct notifier_block	nb;
 };
 
@@ -652,6 +653,112 @@ update_time:
 	return 0;
 }
 
+//begin according to the standard provided by Xiaomi ranjie hardware in 2020.07.16
+bool short_time_high_temp = false;
+bool ffc_chg_term_no_work = false;
+static void ffc_chg_term_current_work(struct work_struct *work)
+{
+	union power_supply_propval pval = {0, };
+	int rc = 0, chg_term_current = 0, batt_temp = 0, ibat_now = 0;
+	struct step_chg_info *chip = container_of(work,
+			struct step_chg_info, ffc_chg_term_current_work.work);
+
+	rc = power_supply_get_property(chip->bms_psy,
+				POWER_SUPPLY_PROP_CAPACITY, &pval);
+	if (rc < 0) {
+		pr_err("Couldn't read batt_soc fail rc=%d\n", rc);
+          	return;
+	}
+	if (pval.intval < 100) {
+		if (short_time_high_temp) {
+			short_time_high_temp = false;
+			pval.intval = true;
+			rc = power_supply_set_property(chip->batt_psy,
+			POWER_SUPPLY_PROP_CHARGING_ENABLED, &pval);
+		}
+		ffc_chg_term_no_work = true;
+		return;
+	}
+
+	rc = power_supply_get_property(chip->bms_psy,
+			POWER_SUPPLY_PROP_FASTCHARGE_MODE, &pval);
+	//pr_err("%s:fastcharge_mode=%d\n", __func__, pval.intval);
+	if (rc < 0) {
+		pr_err("Couldn't read fastcharge mode fail rc=%d\n", rc);
+          	return;
+	}
+	if (!pval.intval) {
+		ffc_chg_term_no_work = true;
+		return;
+		}
+
+	rc = power_supply_get_property(chip->batt_psy,
+				POWER_SUPPLY_PROP_STATUS,&pval);
+	if (rc < 0) {
+		pr_err("Error in getting charging status, rc=%d\n", rc);
+          	return;
+	}
+	if (pval.intval != POWER_SUPPLY_STATUS_CHARGING) {
+		ffc_chg_term_no_work = true;
+		return;
+	}
+
+	if (chip->jeita_fcc_config->param.use_bms)
+		rc = power_supply_get_property(chip->bms_psy,
+				chip->jeita_fcc_config->param.psy_prop, &pval);
+	else
+		rc = power_supply_get_property(chip->batt_psy,
+				chip->jeita_fcc_config->param.psy_prop, &pval);
+	if (rc < 0) {
+		pr_err("Couldn't read %s property rc=%d\n",
+				chip->jeita_fcc_config->param.prop_name, rc);
+          	return;
+	}
+	if ((pval.intval < BATT_COOL_THRESHOLD) || (pval.intval > BATT_WARM_THRESHOLD)) {
+		ffc_chg_term_no_work = true;
+		return;
+	}
+	batt_temp = pval.intval;
+
+	rc = power_supply_get_property(chip->batt_psy,
+				POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
+	chg_term_current = pval.intval;
+
+	if (batt_temp > FFC_CHG_TERM_TEMP_THRESHOLD ){
+		rc = power_supply_get_property(chip->batt_psy,
+					POWER_SUPPLY_PROP_CURRENT_NOW,&pval);
+		if (rc < 0) {
+			pr_err("Error in getting current now, rc=%d\n", rc);
+		}
+		ibat_now = (pval.intval)/1000;
+
+		if ((ibat_now <= FFC_LOW_TEMP_CHG_TERM_CURRENT) &&
+			(ibat_now >= FFC_HIGH_TEMP_CHG_TERM_CURRENT)){
+			short_time_high_temp = true;
+			pval.intval = false;
+			rc = power_supply_set_property(chip->batt_psy,
+					POWER_SUPPLY_PROP_CHARGING_ENABLED, &pval);
+			pr_err("lct batt_temp = %d,ibat_now=%d\n", batt_temp,ibat_now);
+		} else if (chg_term_current == FFC_LOW_TEMP_CHG_TERM_CURRENT){
+			chg_term_current = FFC_HIGH_TEMP_CHG_TERM_CURRENT;
+			pval.intval = chg_term_current;
+			rc = power_supply_set_property(chip->batt_psy,
+					POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
+		}
+	} else if (batt_temp <= FFC_CHG_TERM_TEMP_THRESHOLD) {
+		if (chg_term_current == FFC_HIGH_TEMP_CHG_TERM_CURRENT) {
+			chg_term_current = FFC_LOW_TEMP_CHG_TERM_CURRENT;
+			pval.intval = chg_term_current;
+			rc = power_supply_set_property(chip->batt_psy,
+					POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
+		}
+		schedule_delayed_work(&chip->ffc_chg_term_current_work,
+			msecs_to_jiffies(GET_CONFIG_DELAY_MS*5));
+	}
+	pr_err("lct batt_temp = %d, ffc_chg_term_current=%d\n", batt_temp, chg_term_current);
+}
+ //end according to the standard provided by Xiaomi ranjie hardware in 2020.07.16
+
 #define JEITA_SUSPEND_HYST_UV		50000
 static int handle_jeita(struct step_chg_info *chip)
 {
@@ -741,9 +848,7 @@ static int handle_jeita(struct step_chg_info *chip)
 		return rc;
 	}
 	if (pval.intval) {
-		//Remove this restriction according to the standard
-		//provided by Xiaomi hardware in 2020.07.17
-		//if (batt_soc < 95) {
+		if (batt_soc < 95) {
 		rc = power_supply_get_property(chip->batt_psy,
 				POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
 		chg_term_current = pval.intval;
@@ -761,7 +866,7 @@ static int handle_jeita(struct step_chg_info *chip)
 						POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
 		}
 		pr_info("batt_temp = %d, ffc_chg_term_current=%d\n", batt_temp, chg_term_current);
-		//}
+		}
 	}
 
 	chip->fv_votable = find_votable("FV");
@@ -841,6 +946,31 @@ set_jeita_fv:
 
 update_time:
 	chip->jeita_last_update_time = ktime_get();
+
+  	rc = power_supply_get_property(chip->bms_psy,
+			   POWER_SUPPLY_PROP_BATTERY_TYPE, &pval);
+	if (rc < 0) {
+	  pr_err("lct Failed to get batt-type rc=%d\n", rc);
+          return rc;
+	}
+	if (strcmp(pval.strval,"m703-pm7150b-atl-5160mah") == 0){
+          if (ffc_chg_term_no_work && (batt_soc == 100)) {
+                  ffc_chg_term_no_work = false;
+                  schedule_delayed_work(&chip->ffc_chg_term_current_work,
+                          msecs_to_jiffies(GET_CONFIG_DELAY_MS*5));
+                  pr_err("lct ffc_chg_term_no_work=%d\n", ffc_chg_term_no_work);
+          } else if ((batt_soc < 100) && (!ffc_chg_term_no_work || short_time_high_temp)) {
+                  if (!ffc_chg_term_no_work)
+                          ffc_chg_term_no_work = true;
+                 if (short_time_high_temp) {
+                          short_time_high_temp = false;
+                          pval.intval = true;
+                          rc = power_supply_set_property(chip->batt_psy,
+                          POWER_SUPPLY_PROP_CHARGING_ENABLED, &pval);
+                    }
+                    pr_err("lct ffc_chg_term_no_work=%d,short_time_high_temp=%d\n", ffc_chg_term_no_work,short_time_high_temp);
+          }
+        }
 
 	return 0;
 }
@@ -1006,6 +1136,7 @@ int qcom_step_chg_init(struct device *dev,
 
 	INIT_DELAYED_WORK(&chip->status_change_work, status_change_work);
 	INIT_DELAYED_WORK(&chip->get_config_work, get_config_work);
+	INIT_DELAYED_WORK(&chip->ffc_chg_term_current_work, ffc_chg_term_current_work);
 
 	rc = step_chg_register_notifier(chip);
 	if (rc < 0) {
@@ -1034,6 +1165,7 @@ void qcom_step_chg_deinit(void)
 
 	cancel_delayed_work_sync(&chip->status_change_work);
 	cancel_delayed_work_sync(&chip->get_config_work);
+	cancel_delayed_work_sync(&chip->ffc_chg_term_current_work);
 	power_supply_unreg_notifier(&chip->nb);
 	wakeup_source_unregister(chip->step_chg_ws);
 	the_chip = NULL;
