@@ -2685,7 +2685,7 @@ static void usbpd_sm(struct work_struct *w)
 			pd_phy_close();
 			pd->pd_phy_opened = false;
 		}
-
+		pd->send_get_status = false;
 		pd->in_pr_swap = false;
 		pd->pd_connected = false;
 		pd->in_explicit_contract = false;
