@@ -779,6 +779,7 @@ struct smb_charger {
 	int otg_chg_current;
 #endif
 	bool   is_float_recheck;
+	int   disable_suspend_on_collapse;
 };
 enum quick_charge_type {
 	QUICK_CHARGE_NORMAL = 0,
