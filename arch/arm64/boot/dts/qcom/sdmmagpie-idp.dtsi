@@ -480,6 +480,7 @@
 	qcom,distinguish-qc-class-ab;
 	qcom,disable-suspend-on-collapse;
 	mi,swithc-sel-gpio = <&tlmm 94 0>;
+	qcom,lpd-disable;
 };
 
 &pm6150_pdphy {
