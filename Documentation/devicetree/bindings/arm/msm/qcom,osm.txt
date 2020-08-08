@@ -35,6 +35,13 @@ Properties:
 	Definition: List of phandles to devices that the OPP tables with the L3
 		    frequency and voltage mappings are loaded for.
 
+- qcom,cpufreq-table-XX
+	Usage: optional
+	Value type: <u32>
+	Definition: List of frequencies (in kHz) to expose in CPU XX's cpufreq table.
+		    All frequencies present in hardware will be exposed if this list
+		    is not present.
+
 Example:
 	clock_cpucc: qcom,cpucc {
 		compatible = "qcom,clk-cpu-osm";
@@ -48,4 +55,17 @@ Example:
 		l3-devs = <&phandle0 &phandle1 &phandle2>;
 
 		#clock-cells = <1>;
+		qcom,cpufreq-table-0 =
+			<1248000>,
+			<1497600>,
+			<1612800>,
+			<1708800>,
+			<1804800>;
+
+		qcom,cpufreq-table-6 =
+			<1209600>,
+			<1555200>,
+			<1708800>,
+			<1843200>,
+			<1939200>;
 	};
