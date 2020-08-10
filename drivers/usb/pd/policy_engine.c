@@ -708,6 +708,7 @@ static inline void pd_reset_protocol(struct usbpd *pd)
 	memset(pd->rx_msgid, -1, sizeof(pd->rx_msgid));
 	memset(pd->tx_msgid, 0, sizeof(pd->tx_msgid));
 	pd->send_request = false;
+	pd->send_get_status = false;
 	pd->send_pr_swap = false;
 	pd->send_dr_swap = false;
 }
@@ -2685,7 +2686,7 @@ static void usbpd_sm(struct work_struct *w)
 			pd_phy_close();
 			pd->pd_phy_opened = false;
 		}
-		pd->send_get_status = false;
+
 		pd->in_pr_swap = false;
 		pd->pd_connected = false;
 		pd->in_explicit_contract = false;
