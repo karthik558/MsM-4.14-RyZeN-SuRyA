@@ -47,6 +47,9 @@ static const char * const power_supply_type_text[] = {
 	"USB_HVDCP", "USB_HVDCP_3", "USB_HVDCP_3P5", "Wireless", "USB_FLOAT",
 	"BMS", "Parallel", "Main", "Wipower", "USB_C_UFP", "USB_C_DFP",
 	"Charge_Pump",
+#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+	"Batt_Verify",
+#endif
 };
 
 static const char * const power_supply_status_text[] = {
@@ -439,6 +442,8 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(apsd_rerun),
 	POWER_SUPPLY_ATTR(apsd_timeout),
 	/* Charge pump properties */
+	POWER_SUPPLY_ATTR(qc3p5_power_limit),
+	POWER_SUPPLY_ATTR(qc3p5_current_max),
 	POWER_SUPPLY_ATTR(cp_status1),
 	POWER_SUPPLY_ATTR(cp_status2),
 	POWER_SUPPLY_ATTR(cp_enable),
