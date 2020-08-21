@@ -868,10 +868,14 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 		}
 
 		if (pdpm->cp.vbat_volt < pm_config.min_vbat_for_cp) {
-			/* select 6V,2.3A*/
-			usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
-				6000000, 2300000);
-			pr_info("batt_volt %d, waiting...\n", pdpm->cp.vbat_volt);
+			if (pdpm->apdo_max_curr >= 2300)
+				/* select 6V,2.3A*/
+				usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
+					6000000, 2300000);
+			else
+				usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
+					6000000, pdpm->apdo_max_curr * 1000);
+				pr_info("batt_volt %d, waiting...\n", pdpm->cp.vbat_volt);
 		} else if (pdpm->cp.vbat_volt > pm_config.bat_volt_lp_lmt - 50) {
 			pr_info("batt_volt %d is too high for cp,\
 					charging with switch charger\n",
@@ -881,9 +885,13 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 				recover = true;
 		} else if (thermal_level >= MAX_THERMAL_LEVEL
 				|| pdpm->is_temp_out_fc2_range) {
-			/* select 6V,2.3A*/
-			usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
-				6000000, 2300000);
+			if (pdpm->apdo_max_curr >= 2300)
+				/* select 6V,2.3A*/
+				usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
+					6000000, 2300000);
+			else
+				usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
+					6000000, pdpm->apdo_max_curr * 1000);
 			pr_info("thermal too high or batt temp is out of fc2 range, waiting...\n");
 		} else {
 			pr_info("batt_volt-%d is ok, start flash charging\n",
@@ -1033,9 +1041,13 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 		break;
 
 	case PD_PM_STATE_FC2_EXIT:
-		/* select 6V,2.3A*/
-		usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
+		if (pdpm->apdo_max_curr >= 2300)
+			/* select 6V,2.3A*/
+			usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
 				6000000, 2300000);
+		else
+			usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
+				6000000, pdpm->apdo_max_curr * 1000);
 		//usbpd_select_pdo(pdpm->pd, 1, 0, 0);
 		if (pdpm->fcc_votable)
 			vote(pdpm->fcc_votable, BQ_TAPER_FCC_VOTER,
