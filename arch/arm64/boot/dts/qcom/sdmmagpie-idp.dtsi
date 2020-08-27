@@ -408,8 +408,8 @@
 	qcom,vbatt-low-cold-mv = <3700>;
 	qcom,vbatt-empty-mv = <3000>;
 	qcom,vbatt-empty-cold-mv = <3000>;
-	qcom,s3-entry-ibat-ua = <18000>;
-	qcom,s3-exit-ibat-ua = <38000>;
+	qcom,s3-entry-ibat-ua = <25000>;
+	qcom,s3-exit-ibat-ua = <45000>;
 	qcom,s3-entry-fifo-length = <2>;
 	qcom,qg-vadc = <&pm6150_vadc>;
 	qcom,qg-ext-sns;
