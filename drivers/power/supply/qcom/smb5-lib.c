@@ -6772,7 +6772,7 @@ static void smblib_raise_qc3_vbus_work(struct work_struct *work)
 	}
 }
 
-struct quick_charge adapter_cap[10] = {
+struct quick_charge adapter_cap[] = {
 	{ POWER_SUPPLY_TYPE_USB,        QUICK_CHARGE_NORMAL },
 	{ POWER_SUPPLY_TYPE_USB_DCP,    QUICK_CHARGE_NORMAL },
 	{ POWER_SUPPLY_TYPE_USB_CDP,    QUICK_CHARGE_NORMAL },
@@ -6781,6 +6781,7 @@ struct quick_charge adapter_cap[10] = {
 	{ POWER_SUPPLY_TYPE_USB_PD,       QUICK_CHARGE_FAST },
 	{ POWER_SUPPLY_TYPE_USB_HVDCP,    QUICK_CHARGE_FAST },
 	{ POWER_SUPPLY_TYPE_USB_HVDCP_3,  QUICK_CHARGE_FAST },
+	{ POWER_SUPPLY_TYPE_USB_HVDCP_3P5,QUICK_CHARGE_FAST },
 	{ POWER_SUPPLY_TYPE_WIRELESS,     QUICK_CHARGE_FAST },
 	{0, 0},
 };
