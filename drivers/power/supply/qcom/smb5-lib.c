@@ -2293,7 +2293,7 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 		else if ((usb_online || vbus_now > 4000000) && (batt_temp > -100) && (batt_temp < 580) &&
                      (POWER_SUPPLY_HEALTH_OVERHEAT != batt_health) && (POWER_SUPPLY_HEALTH_OVERVOLTAGE != batt_health)) {
 			val->intval = POWER_SUPPLY_STATUS_CHARGING;
-			pr_info("vbus_now is %d, report charging\n", vbus_now);
+			pr_info("vbus_now = %d, report charging\n", vbus_now);
 		} else
 			val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
 		break;

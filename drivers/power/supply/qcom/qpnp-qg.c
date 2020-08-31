@@ -2508,7 +2508,7 @@ static const struct power_supply_desc qg_psy_desc = {
 	.property_is_writeable = qg_property_is_writeable,
 };
 
-#define DEFAULT_RECHARGE_SOC 95
+#define DEFAULT_RECHARGE_SOC 99
 static int qg_charge_full_update(struct qpnp_qg *chip)
 {
 	union power_supply_propval prop = {0, };
@@ -2534,17 +2534,33 @@ static int qg_charge_full_update(struct qpnp_qg *chip)
 		recharge_soc = prop.intval;
 	}
 	chip->recharge_soc = recharge_soc;
-
 	qg_dbg(chip, QG_DEBUG_STATUS, "msoc=%d health=%d charge_full=%d charge_done=%d\n",
 				chip->msoc, health, chip->charge_full,
 				chip->charge_done);
 	if (chip->charge_done && !chip->charge_full) {
-		if (chip->msoc >= 99 && (health == POWER_SUPPLY_HEALTH_GOOD || health == POWER_SUPPLY_HEALTH_COOL)) {
-			chip->charge_full = true;
-			qg_dbg(chip, QG_DEBUG_STATUS, "Setting charge_full (0->1) @ msoc=%d\n",
-					chip->msoc);
-		} else if (health != POWER_SUPPLY_HEALTH_GOOD) {
+		if (health == POWER_SUPPLY_HEALTH_GOOD || health == POWER_SUPPLY_HEALTH_COOL) {
+			if(chip->recharge_soc != DEFAULT_RECHARGE_SOC) {
+				prop.intval = DEFAULT_RECHARGE_SOC;
+				rc = power_supply_set_property(chip->batt_psy,
+						POWER_SUPPLY_PROP_RECHARGE_SOC, &prop);
+				qg_dbg(chip, QG_DEBUG_STATUS, "HEALTH_GOOD set recharge_soc=%d\n",
+						prop.intval);
+			}
+			if (chip->msoc >= 99) {
+				chip->charge_full = true;
+				qg_dbg(chip, QG_DEBUG_STATUS, "Setting charge_full (0->1) @ msoc=%d\n",
+						chip->msoc);
+			}
+		} else if (health == POWER_SUPPLY_HEALTH_WARM) {
 			/* terminated in JEITA */
+			if(((chip->recharge_soc == DEFAULT_RECHARGE_SOC) || (chip->msoc > chip->recharge_soc + 2))
+						&& (chip->msoc != 100)) {
+				prop.intval = chip->msoc - 2;
+				rc = power_supply_set_property(chip->batt_psy,
+						POWER_SUPPLY_PROP_RECHARGE_SOC, &prop);
+				qg_dbg(chip, QG_DEBUG_STATUS, "HEALTH_WARM set recharge_soc=%d\n",
+						prop.intval);
+			}
 			qg_dbg(chip, QG_DEBUG_STATUS, "Terminated charging @ msoc=%d\n",
 					chip->msoc);
 		}
@@ -2579,7 +2595,7 @@ static int qg_charge_full_update(struct qpnp_qg *chip)
 		 * the input is removed, if linearize-soc is set scale
 		 * msoc from 100% for better UX.
 		 */
-		if (chip->msoc < recharge_soc || !input_present) {
+		if (chip->msoc <= recharge_soc || !input_present) {
 			if (chip->dt.linearize_soc) {
 				get_rtc_time(&chip->last_maint_soc_update_time);
 				chip->maint_soc = FULL_SOC;
