@@ -6811,7 +6811,7 @@ int smblib_get_quick_charge_type(struct smb_charger *chg)
 		return QUICK_CHARGE_TURBE;
 	}
 
-	if (chg->is_qc_class_b)
+	if (chg->is_qc_class_b || (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3P5))
 		return QUICK_CHARGE_FLASH;
 
 	if ((chg->real_charger_type == POWER_SUPPLY_TYPE_USB_DCP) && chg->hvdcp_recheck_status)
