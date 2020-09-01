@@ -34,6 +34,12 @@ struct range_data {
 	u32 value;
 };
 
+enum step_hvdcp3_type {
+	STEP_HVDCP3_NONE = 0,
+	STEP_HVDCP3_CLASSA_18W,
+	STEP_HVDCP3_CLASSB_27W,
+};
+
 int qcom_step_chg_init(struct device *dev,
 		bool step_chg_enable, bool sw_jeita_enable, bool jeita_arb_en);
 void qcom_step_chg_deinit(void);

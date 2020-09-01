@@ -765,7 +765,7 @@ static int handle_jeita(struct step_chg_info *chip)
 	union power_supply_propval pval = {0, };
 	int rc = 0, fcc_ua = 0, fv_uv = 0;
 	u64 elapsed_us;
-	int temp, pd_authen_result = 0;
+	int temp, pd_authen_result = 0, usb_charger_type = 0, hvdcp3_charger_type = 0;
 	static bool fast_mode_dis;
 	int chg_term_current = 0, batt_soc = 0, batt_temp = 0;
 
@@ -889,7 +889,24 @@ static int handle_jeita(struct step_chg_info *chip)
 		pr_err("Get fastcharge mode status failed, rc=%d\n", rc);
 	pd_authen_result = pval.intval;
 
-	if (pd_authen_result == 1) {
+	rc = power_supply_get_property(chip->usb_psy,
+			POWER_SUPPLY_PROP_REAL_TYPE, &pval);
+	if (!rc)
+		usb_charger_type = pval.intval;
+	else
+		pr_info("Get usb_charg_type failed, rc=%d\n", rc);
+
+	if(usb_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3) {
+		rc  = power_supply_get_property(chip->usb_psy,
+			POWER_SUPPLY_PROP_HVDCP3_TYPE, &pval);
+	if (!rc )
+		hvdcp3_charger_type = pval.intval;
+	else
+		pr_info("Get hvdcp3_type failed, rc=%d\n", rc);
+	}
+
+	if ((pd_authen_result == 1) || (usb_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3P5) ||
+		(hvdcp3_charger_type == STEP_HVDCP3_CLASSB_27W)) {
 		if ((temp >= BATT_WARM_THRESHOLD || temp <= BATT_COOL_THRESHOLD)
 					&& !fast_mode_dis) {
 			pr_err("temp:%d disable fastcharge mode\n", temp);
