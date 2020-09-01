@@ -2100,7 +2100,9 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		pr_err("longcheer,%s,reverse_charge_mode=%d,reverse_state=%d\n",
 			__func__,chg->reverse_charge_mode,chg->reverse_charge_state);
 		if(chg->reverse_charge_mode != chg->reverse_charge_state){
-			rerun_reverse_check(chg);
+			chg->reverse_charge_state = chg->reverse_charge_mode;
+			if(chg->real_charger_type != POWER_SUPPLY_TYPE_USB_PD)
+				rerun_reverse_check(chg);
 		}	
 		break;
 #endif
@@ -3850,6 +3852,7 @@ static int lct_unregister_powermanger(struct smb_charger *chg)
 #define  BATT_10_BELOW_ZERO_THRESHOLD    (-100)
 #define  BATT_15_THRESHOLD    150
 #define  BATT_50_THRESHOLD    500
+#define  BATT_40_THRESHOLD    400
 #define  BATT_TEMP_HYSTERESIS     10
 #define  OTG_STEP_HYSTERISIS_DELAY_US		5000000 /* 5 secs */
 #define  OTG_WAKELOCK_HOLD_TIME 2000 /* in ms */
@@ -3857,9 +3860,12 @@ static int lct_unregister_powermanger(struct smb_charger *chg)
 static int lct_get_otg_chg_current(int temp)
 {
 	int otg_chg_current_temp = 0;
-	if((temp >= BATT_15_THRESHOLD + BATT_TEMP_HYSTERESIS) && (temp <= BATT_50_THRESHOLD - BATT_TEMP_HYSTERESIS)){
+	if((temp >= BATT_15_THRESHOLD + BATT_TEMP_HYSTERESIS) && (temp < BATT_40_THRESHOLD - BATT_TEMP_HYSTERESIS)){
 		otg_chg_current_temp = MICRO_2PA;
-	}else if((temp > BATT_50_THRESHOLD) ||
+	}else if((temp > BATT_40_THRESHOLD + BATT_TEMP_HYSTERESIS) && (temp <= BATT_50_THRESHOLD - BATT_TEMP_HYSTERESIS)){
+		otg_chg_current_temp = MICRO_1P5A;
+	}
+	else if((temp > BATT_50_THRESHOLD) ||
 	((temp >= BATT_10_BELOW_ZERO_THRESHOLD + BATT_TEMP_HYSTERESIS) && ( temp < BATT_15_THRESHOLD))){
 		otg_chg_current_temp = MICRO_1PA;
 	}else if(temp < BATT_10_BELOW_ZERO_THRESHOLD){
