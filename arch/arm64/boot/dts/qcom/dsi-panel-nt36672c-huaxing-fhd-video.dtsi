@@ -182,7 +182,7 @@
 					15 01 00 00 00 00 02 FF 27
 					15 01 00 00 00 00 02 FB 01
 					15 01 00 00 00 00 02 3F 01
-					15 01 00 00 00 00 02 43 00
+					15 01 00 00 00 00 02 43 08
 					//give by nova, use for esd check end
 				];
 				qcom,mdss-dsi-off-command = [
