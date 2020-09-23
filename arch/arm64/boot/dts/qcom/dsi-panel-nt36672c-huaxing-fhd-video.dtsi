@@ -98,7 +98,7 @@
 					15 01 00 00 00 00 02 FF 10
 					15 01 00 00 00 00 02 FB 01
 					15 01 00 00 00 00 02 51 C1
-					15 01 00 00 00 00 02 53 24
+					15 01 00 00 00 00 02 53 2C
 					15 01 00 00 00 00 02 55 00
 
 					//give by nova, use for cabc begin
@@ -213,22 +213,25 @@
 				qcom,mdss-dsi-dispparam-cabcoff-command = [
 					15 01 00 00 00 00 02 FF 10
 					15 01 00 00 00 00 02 FB 01
-					15 01 00 00 00 00 02 53 24
+					15 01 00 00 00 00 02 53 2C
 					15 01 00 00 14 00 02 55 00
 				];
 				qcom,mdss-dsi-dispparam-lcd-hbm-l1-on-command = [
 					15 01 00 00 00 00 02 FF 10
 					15 01 00 00 00 00 02 FB 01
+					15 01 00 00 00 00 02 53 2C
 					15 01 00 00 00 00 02 51 E6
 				];
 				qcom,mdss-dsi-dispparam-lcd-hbm-l2-on-command = [
 					15 01 00 00 00 00 02 FF 10
 					15 01 00 00 00 00 02 FB 01
+					15 01 00 00 00 00 02 53 2C
 					15 01 00 00 00 00 02 51 FF
 				];
 				qcom,mdss-dsi-dispparam-lcd-hbm-off-command = [
 					15 01 00 00 00 00 02 FF 10
 					15 01 00 00 00 00 02 FB 01
+					15 01 00 00 00 00 02 53 2C
 					15 01 00 00 00 00 02 51 C1
 				];
 				qcom,mdss-dsi-dispparam-hbm-on-command = [
