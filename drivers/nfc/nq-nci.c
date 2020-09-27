@@ -1194,6 +1194,9 @@ static int nqx_probe(struct i2c_client *client,
 	if (strnstr(saved_command_line, "androidboot.hwc=India", strlen(saved_command_line)) != NULL) {
 		dev_err(&client->dev, "%s:CHECK_NFC_NONE_NFC androidboot.hwc=India :not nqx_probe\n", __func__);
 		return -ENODEV;
+	}else if (strnstr(saved_command_line, "androidboot.hwc=India_PA", strlen(saved_command_line)) != NULL) {
+		dev_err(&client->dev, "%s:CHECK_NFC_NONE_NFC androidboot.hwc=India_PA :not nqx_probe\n", __func__);
+		return -ENODEV;
 	}
 #endif
 
