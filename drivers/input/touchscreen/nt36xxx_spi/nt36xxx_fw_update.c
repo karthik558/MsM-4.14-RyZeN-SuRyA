@@ -813,7 +813,8 @@ static int32_t nvt_check_crc_done_ilm_err(void)
 
     NVT_ERR("CRC DONE, ILM DLM FLAG = 0x%02X\n", buf[1]);
     if (((buf[1] & ILM_CRC_FLAG) && (buf[1] & CRC_DONE)) ||
-		(buf[1] == 0xFE)) {
+		(buf[1] == 0xFE) ||
+			((buf[1] & CRC_DONE) == 0x00)) {
 	return 1;
     } else {
 	return 0;
@@ -1003,7 +1004,7 @@ fail:
 			NVT_ERR("error, retry=%d\n", retry);
 			nvt_read_bld_hw_crc();
 #if NVT_TOUCH_ESD_DISP_RECOVERY
-			if (nvt_check_crc_done_ilm_err()) {
+			if (nvt_check_crc_done_ilm_err() || nvt_check_crc_done_ilm_err() || nvt_check_crc_done_ilm_err()) {
 				NVT_ERR("set display off to trigger display esd recovery.\n");
 				nvt_f2c_disp_off();
 			}
