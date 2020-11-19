@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2006, Intel Corporation.
- *
+ * Copyright (C) 2020 XiaoMi, Inc.
  * This file is released under the GPLv2.
  *
  * Copyright (C) 2006-2008 Intel Corporation

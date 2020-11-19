@@ -2,7 +2,7 @@
  * kernel/power/suspend.c - Suspend to RAM and standby functionality.
  *
  * Copyright (c) 2003 Patrick Mochel
- * Copyright (c) 2003 Open Source Development Lab
+ * Copyright (C) 2020 XiaoMi, Inc.
  * Copyright (c) 2009 Rafael J. Wysocki <rjw@sisk.pl>, Novell Inc.
  *
  * This file is released under the GPLv2.

@@ -1,7 +1,7 @@
 /* net/sched/sch_hhf.c		Heavy-Hitter Filter (HHF)
  *
  * Copyright (C) 2013 Terry Lam <vtlam@google.com>
- * Copyright (C) 2013 Nandita Dukkipati <nanditad@google.com>
+ * Copyright (C) 2020 XiaoMi, Inc.
  */
 
 #include <linux/jiffies.h>

@@ -2,7 +2,7 @@
  * Pressure stall information for CPU, memory and IO
  *
  * Copyright (c) 2018 Facebook, Inc.
- * Author: Johannes Weiner <hannes@cmpxchg.org>
+ * Copyright (C) 2020 XiaoMi, Inc.
  *
  * Polling support by Suren Baghdasaryan <surenb@google.com>
  * Copyright (c) 2018 Google, Inc.

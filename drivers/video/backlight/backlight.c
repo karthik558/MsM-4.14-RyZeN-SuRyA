@@ -2,7 +2,7 @@
  * Backlight Lowlevel Control Abstraction
  *
  * Copyright (C) 2003,2004 Hewlett-Packard Company
- *
+ * Copyright (C) 2020 XiaoMi, Inc.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt

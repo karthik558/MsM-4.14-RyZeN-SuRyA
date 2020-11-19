@@ -3,7 +3,7 @@
  * fs/f2fs/segment.c
  *
  * Copyright (c) 2012 Samsung Electronics Co., Ltd.
- *             http://www.samsung.com/
+ * Copyright (C) 2020 XiaoMi, Inc.
  */
 #include <linux/fs.h>
 #include <linux/f2fs_fs.h>

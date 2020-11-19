@@ -1,7 +1,7 @@
 /*
  * TEE driver for goodix fingerprint sensor
  * Copyright (C) 2016 Goodix
- *
+ * Copyright (C) 2020 XiaoMi, Inc.
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -630,16 +630,16 @@ err_parse_dt:
 	return status;
 }
 
-static int proc_show_ver(struct seq_file *file,void *v)
+static int proc_show_ver(struct seq_file *file, void *v)
 {
-	seq_printf(file,"Fingerprint: Goodix\n");
+	seq_printf(file, "Fingerprint: Goodix\n");
 	return 0;
 }
 
-static int proc_open(struct inode *inode,struct file *file)
+static int proc_open(struct inode *inode, struct file *file)
 {
 	pr_info("gf3258 proc_opening\n");
-	single_open(file,proc_show_ver,NULL);
+	single_open(file, proc_show_ver, NULL);
 	return 0;
 }
 
@@ -898,7 +898,7 @@ static int gf_remove(struct platform_device *pdev)
 	list_del(&gf_dev->device_entry);
 	device_destroy(gf_class, gf_dev->devt);
 	clear_bit(MINOR(gf_dev->devt), minors);
-	remove_proc_entry(PROC_NAME,NULL);
+	remove_proc_entry(PROC_NAME, NULL);
 	mutex_unlock(&device_list_lock);
 
 	return 0;

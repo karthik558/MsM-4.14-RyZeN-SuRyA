@@ -1,6 +1,6 @@
 /*******************************************************************************
 * Copyright (C) 2015 Maxim Integrated Products, Inc., All rights Reserved.
-* * This software is protected by copyright laws of the United States and
+ * Copyright (C) 2020 XiaoMi, Inc.
 * of foreign countries. This material may also be protected by patent laws
 * and technology transfer regulations of the United States and of foreign
 * countries. This software is furnished under a license agreement and/or a

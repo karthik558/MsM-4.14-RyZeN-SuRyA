@@ -2,7 +2,7 @@
  * Marvell 88PM80x Interface
  *
  * Copyright (C) 2012 Marvell International Ltd.
- * Qiao Zhou <zhouqiao@marvell.com>
+ * Copyright (C) 2020 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as

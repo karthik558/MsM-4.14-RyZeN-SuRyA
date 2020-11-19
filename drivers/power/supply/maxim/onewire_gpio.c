@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2016  xiaomi Inc.
- */
+ * Copyright (C) 2020 XiaoMi, Inc.
+*/
 #define pr_fmt(fmt)	"[Onewire] %s: " fmt, __func__
 
 #include <linux/slab.h> /* kfree() */

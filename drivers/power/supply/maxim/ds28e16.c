@@ -1,6 +1,6 @@
 /*******************************************************************************
  * Copyright (C) 2015 Maxim Integrated Products, Inc., All Rights Reserved.
- *
+ * Copyright (C) 2020 XiaoMi, Inc.
  *******************************************************************************
  *
  *  DS28E16.c - DS28E16 device module. Requires low level 1-Wire connection.

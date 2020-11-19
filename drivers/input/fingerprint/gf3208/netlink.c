@@ -2,7 +2,8 @@
  * netlink interface
  *
  * Copyright (c) 2017 Goodix
- */
+ * Copyright (C) 2020 XiaoMi, Inc.
+*/
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/timer.h>
@@ -28,20 +29,20 @@ void sendnlmsg(char *message)
 	if(!message || !nl_sk || !pid){
 		return ;
 	}
-	skb_1 = alloc_skb(len,GFP_KERNEL);
+	skb_1 = alloc_skb(len, GFP_KERNEL);
 	if(!skb_1){
 		pr_err("alloc_skb error\n");
 		return;
 	}
-	nlh = nlmsg_put(skb_1,0,0,0,MAX_MSGSIZE,0);
+	nlh = nlmsg_put(skb_1, 0, 0, 0, MAX_MSGSIZE, 0);
 
 	NETLINK_CB(skb_1).portid = 0;
 	NETLINK_CB(skb_1).dst_group = 0;
 
 	message[slen-1]= '\0';
-	memcpy(NLMSG_DATA(nlh),message,slen);
+	memcpy(NLMSG_DATA(nlh), message,slen);
 
-	ret = netlink_unicast(nl_sk,skb_1,pid,MSG_DONTWAIT);
+	ret = netlink_unicast(nl_sk,skb_1, pid,MSG_DONTWAIT);
 	if(!ret) {
 		//kfree_skb(skb_1);
 		pr_err("send msg from kernel to usespace failed ret 0x%x \n", ret);

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016 Qualcomm Atheros, Inc
- *
+ * Copyright (C) 2020 XiaoMi, Inc.
  * GPL v2
  *
  * Based on net/sched/sch_fq_codel.c

@@ -3,7 +3,7 @@
  * fs/f2fs/f2fs.h
  *
  * Copyright (c) 2012 Samsung Electronics Co., Ltd.
- *             http://www.samsung.com/
+ * Copyright (C) 2020 XiaoMi, Inc.
  */
 #ifndef _LINUX_F2FS_H
 #define _LINUX_F2FS_H

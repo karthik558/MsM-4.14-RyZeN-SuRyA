@@ -4,7 +4,7 @@
  * Version: v1.0.9
  *
  * Copyright (c) 2019 AWINIC Technology CO., LTD
- *
+ * Copyright (C) 2020 XiaoMi, Inc.
  *  Author: Joseph <zhangzetao@awinic.com.cn>
  *
  * This program is free software; you can redistribute  it and/or modify it
