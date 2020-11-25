@@ -12,7 +12,7 @@
 
 /**************************** CONFIGURATION BEGIN ****************************/
 static const int little_cpu_freqs[] = {
-#if 0
+#if 1
 	576000,
 	768000,
 	1017600,
