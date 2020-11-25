@@ -12,7 +12,7 @@
 
 /**************************** CONFIGURATION BEGIN ****************************/
 static const int little_cpu_freqs[] = {
-#if 1
+#if 0
 	576000,
 	768000,
 	1017600,
@@ -26,7 +26,7 @@ static const int little_cpu_freqs[] = {
 };
 
 static const int big_cpu_freqs[] = {
-#if 0
+#if 1
 	652800,
 	806400,
 	979200,
@@ -38,7 +38,8 @@ static const int big_cpu_freqs[] = {
 	1843200,
 	1939200,
 	2169600,
-	2208000
+	2208000,
+	2361600
 #endif
 };
 
@@ -46,7 +47,7 @@ static const int big_cpu_freqs[] = {
 #define MEASURE_POWER
 
 /* WARNING: Don't bench both clusters at the same time */
-const unsigned long cpu_bench_mask = 0b11000000;
+const unsigned long cpu_bench_mask = 0b00111111;
 /***************************** CONFIGURATION END *****************************/
 
 /* Delay before starting to ensure nothing left from init will interfere */
